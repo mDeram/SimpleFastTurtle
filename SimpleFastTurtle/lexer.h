@@ -52,6 +52,12 @@ enum Tokens
     TOK_KEY_SWITCH  = 76,
     TOK_KEY_STATIC  = 77,
     TOK_KEY_DEFAULT = 77,
+
+    /*LIteral*/
+    TOK_LI_NUMBER   = 97,
+    TOK_LI_BOOL     = 98,
+    TOK_LI_STRING   = 99,
+    TOK_LI_CHAR     = 100,
 };
 
 void lexer_main(int save);
