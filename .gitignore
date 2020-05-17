@@ -5,6 +5,8 @@
 *.layout
 bin/
 obj/
+*.sft
+*.l
 
 # Compiled source #
 ###################
