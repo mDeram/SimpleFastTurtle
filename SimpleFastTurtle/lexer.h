@@ -36,6 +36,8 @@ enum Tokens
     TOK_SEP_SEMI    = ';',
     TOK_SEP_COMMA   = ',',
     TOK_SEP_DOT     = '.',
+    TOK_SEP_CHAR    = '\'',
+    TOK_SEP_STR     = '"',
 
     /*KEYword*/
     TOK_KEY_FOR     = 65,
@@ -51,13 +53,16 @@ enum Tokens
     TOK_KEY_STR     = 75,
     TOK_KEY_SWITCH  = 76,
     TOK_KEY_STATIC  = 77,
-    TOK_KEY_DEFAULT = 77,
+    TOK_KEY_DEFAULT = 78,
+    TOK_KEY_CASE    = 79,
+    TOK_KEY_ASSERT  = 80,
+    TOK_KEY_ELSEIF  = 81,
 
     /*LIteral*/
     TOK_LI_NUMBER   = 97,
     TOK_LI_BOOL     = 98,
     TOK_LI_STRING   = 99,
-    TOK_LI_CHAR     = 100,
+    TOK_LI_CHAR     = 100,//not used, lexer consider every char as strings
 };
 
 void lexer_main(int save);
