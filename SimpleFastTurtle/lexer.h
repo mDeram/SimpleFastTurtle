@@ -1,8 +1,13 @@
 #ifndef F_LEXER_H
 #define F_LEXER_H
 
-enum Tokens
-{
+enum {
+    TOK_TYPE_OP     = 48,
+    TOK_TYPE_SEP    = 49,
+    TOK_TYPE_KEY    = 50,
+    TOK_TYPE_LI     = 51,
+    TOK_TYPE_ID     = 52,
+
     /*OPerator*/
     TOK_OP_EQUAL    = '=',
     TOK_OP_NOT      = '!',
@@ -57,6 +62,11 @@ enum Tokens
     TOK_KEY_CASE    = 79,
     TOK_KEY_ASSERT  = 80,
     TOK_KEY_ELSEIF  = 81,
+    TOK_KEY_NEW     = 82,
+    TOK_KEY_CLASS   = 83,
+    TOK_KEY_PUBLIC  = 84,
+    TOK_KEY_PRIVATE = 85,
+    TOK_KEY_PROTECT = 86,
 
     /*LIteral*/
     TOK_LI_NUMBER   = 97,
@@ -65,6 +75,13 @@ enum Tokens
     TOK_LI_CHAR     = 100,//not used, lexer consider every char as strings
 };
 
-void lexer_main(int save);
+struct TokenNode {
+    unsigned long int line;
+    char type;
+    char id;
+    char *token;
+};
+
+struct List *lexer_process(char *file_name, int option_save);
 
 #endif
