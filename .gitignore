@@ -8,6 +8,7 @@ obj/
 *.sft
 *.l
 code_save/
+*.sublime-workspace
 
 # Compiled source #
 ###################

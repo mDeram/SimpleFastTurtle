@@ -4,7 +4,7 @@
 #include <string.h>
 
 //libs
-#include "list.h"
+#include "token.h"
 
 //program
 #include "lexer.h"
@@ -12,9 +12,9 @@
 int main(int argc, char *argv[])
 {
 
-    struct List *s_list_token = lexer_process("main.sft", 1);
+    struct TokenList *s_list_token = lexer_process("main.sft", 1, 0, 0);
 
-    list_delete(s_list_token);
+    token_list_delete(s_list_token);
 
     return 0;
 }
