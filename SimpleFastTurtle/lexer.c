@@ -29,7 +29,7 @@ static int lexer_is_separator(const char token);
 static char lexer_escape_to_char(const char c);
 
 
-struct TokenList *lexer_process(char *file_name, int option_save, int option_print_tokens, int option_print_size)
+void lexer_process(struct TokenList *s_list_token, char *file_name, int option_save, int option_print_tokens, int option_print_size)
 {
     FILE *f = NULL;
     f = fopen(file_name, "r");
@@ -37,21 +37,19 @@ struct TokenList *lexer_process(char *file_name, int option_save, int option_pri
     if (f == NULL)
         error_printd(ERROR_LEXER_FILE_NOT_FOUND, file_name);
 
-    struct TokenList *s_list_token = token_list_new();
     lexer_tokenize(f, s_list_token);
 
     fclose(f);
 
+    /*OPTIONS*/
     if (option_save)
         lexer_save(s_list_token);
 
     if (option_print_tokens)
-        token_list_printf(s_list_token);
+        token_list_fprintf(stdout, s_list_token);
 
     if (option_print_size)
         printf("Size: %d\n", s_list_token->size);
-
-    return s_list_token;
 }
 
 static void lexer_save(struct TokenList *s_list_token)
@@ -62,8 +60,8 @@ static void lexer_save(struct TokenList *s_list_token)
     if (output == NULL)
         error_print(ERROR_LEXER_FILE_OUTPUT_FAILURE);
 
-    token_list_fprintf(s_list_token, output);
-    
+    token_list_fprintf(output, s_list_token);
+
 
     fclose(output);
 }

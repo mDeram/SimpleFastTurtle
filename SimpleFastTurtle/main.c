@@ -3,17 +3,20 @@
 #include <unistd.h>
 #include <string.h>
 
-//libs
 #include "token.h"
-
-//program
 #include "lexer.h"
+#include "parser.h"
 
 int main(int argc, char *argv[])
 {
+	struct TokenList *s_list_token = token_list_new();
+	struct TokenTree *s_tree_token = token_tree_new();
 
-    struct TokenList *s_list_token = lexer_process("main.sft", 1, 0, 0);
+    lexer_process(s_list_token, "main.sft", 1, 1, 1);
 
+    parser_process(s_tree_token, s_list_token, 1, 1);
+
+    token_tree_delete(s_tree_token);
     token_list_delete(s_list_token);
 
     return 0;

@@ -6,6 +6,30 @@
 
 #include "token.h"
 
+struct TokenTree *token_tree_new()
+{
+	struct TokenTree *tree = malloc(sizeof(struct TokenTree));
+
+	if (tree == NULL)
+		exit(EXIT_FAILURE);
+
+	tree->size = 0;
+
+	return tree;
+}
+
+void token_tree_clear(struct TokenTree *list)
+{
+
+}
+
+void token_tree_delete(struct TokenTree *list)
+{
+
+}
+
+
+
 struct TokenList *token_list_new()
 {
 	struct TokenList *list = malloc(sizeof(struct TokenList));
@@ -21,7 +45,7 @@ struct TokenList *token_list_new()
 
 void token_list_push(struct TokenList *list, const unsigned long int current_line, const char type, const char id, const char *token)
 {
-	struct TokenNode *node = malloc(sizeof(struct TokenNode));
+	struct TokenListNode *node = malloc(sizeof(struct TokenListNode));
 	if (node == NULL)
 		exit(EXIT_FAILURE);
 
@@ -30,8 +54,8 @@ void token_list_push(struct TokenList *list, const unsigned long int current_lin
 	node->id = id;
 
 	size_t len = strlen(token)+1;
-    if (type == TOK_TYPE_ID && len > 32)
-    	len = 32;
+	if (type == TOK_TYPE_ID && len > 32)
+		len = 32;
 	node->token = malloc(sizeof(char)*(len));
 	if (node->token == NULL)
 		exit(EXIT_FAILURE);
@@ -53,9 +77,9 @@ void token_list_push(struct TokenList *list, const unsigned long int current_lin
 	list->size++;
 }
 
-void token_list_foreach(struct TokenList *list, void (*callback)(struct TokenNode *))
+void token_list_foreach(struct TokenList *list, void (*callback)(struct TokenListNode *))
 {
-	struct TokenNode *node = list->head;
+	struct TokenListNode *node = list->head;
 	while (node != NULL)
 	{
 		(*callback)(node);
@@ -63,19 +87,9 @@ void token_list_foreach(struct TokenList *list, void (*callback)(struct TokenNod
 	}
 }
 
-void token_list_printf(struct TokenList *list)
+void token_list_fprintf(FILE *output, struct TokenList *list)
 {
-	struct TokenNode *node = list->head;
-	while (node != NULL)
-	{
-		printf("[Line: %lu\t\tType: %d\t\tId: %d\t\tSymbol: %s\t\t]\n", node->line, node->type, node->id, node->token);
-		node = node->next;
-	}
-}
-
-void token_list_fprintf(struct TokenList *list, FILE *output)
-{
-	struct TokenNode *node = list->head;
+	struct TokenListNode *node = list->head;
 	while (node != NULL)
 	{
 		fprintf(output, "[Line: %lu\t\tType: %d\t\tId: %d\t\tSymbol: %s\t\t]\n", node->line, node->type, node->id, node->token);
@@ -85,7 +99,7 @@ void token_list_fprintf(struct TokenList *list, FILE *output)
 
 void token_list_clear(struct TokenList *list)
 {
-	struct TokenNode *node = NULL;
+	struct TokenListNode *node = NULL;
 	while (list->head != NULL)
 	{
 		node = list->head;
@@ -93,8 +107,8 @@ void token_list_clear(struct TokenList *list)
 		free(node->token);
 		free(node);
 	}
-    list->tail = NULL;
-    list->size = 0;
+	list->tail = NULL;
+	list->size = 0;
 }
 
 void token_list_delete(struct TokenList *list)

@@ -75,26 +75,38 @@ enum {
     TOK_LI_CHAR     = 100,//not used, lexer consider every char as strings
 };
 
-struct TokenNode {
+struct TokenListNode {
     unsigned long int line;
     char type;
     char id;
     char *token;
-    struct TokenNode *next;
+    struct TokenListNode *next;
 };
 
 struct TokenList {
 	int size;
-	struct TokenNode *head;
-	struct TokenNode *tail;
+	struct TokenListNode *head;
+	struct TokenListNode *tail;
+};
+
+
+struct TokenTreeNode {
+    
+};
+
+struct TokenTree {
+    int size;
 };
 
 struct TokenList *token_list_new();
 void token_list_push(struct TokenList *list, const unsigned long int current_line, const char type, const char id, const char *token);
-void token_list_foreach(struct TokenList *list, void (*callback)(struct TokenNode *));
-void token_list_printf(struct TokenList *list);
-void token_list_fprintf(struct TokenList *list, FILE *output);
+void token_list_foreach(struct TokenList *list, void (*callback)(struct TokenListNode *));
+void token_list_fprintf(FILE *output, struct TokenList *list);
 void token_list_clear(struct TokenList *list);
 void token_list_delete(struct TokenList *list);
+
+struct TokenTree *token_tree_new();
+void token_tree_clear(struct TokenTree *list);
+void token_tree_delete(struct TokenTree *list);
 
 #endif
