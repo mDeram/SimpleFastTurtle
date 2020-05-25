@@ -45,58 +45,122 @@ enum {
     TOK_SEP_STR     = '"',
 
     /*KEYword*/
-    TOK_KEY_FOR     = 65,
+    TOK_KEY_FOR     = 65,   /*yes*/
     TOK_KEY_FLOAT   = 66,
-    TOK_KEY_IF      = 67,
+    TOK_KEY_IF      = 67,   /*yes*/
     TOK_KEY_INT     = 68,
-    TOK_KEY_WHILE   = 69,
-    TOK_KEY_ELSE    = 70,
+    TOK_KEY_WHILE   = 69,   /*yes*/
+    TOK_KEY_ELSE    = 70,   /*yes*/
     TOK_KEY_BOOL    = 71,
-    TOK_KEY_BREAK   = 72,
+    TOK_KEY_BREAK   = 72,   /*yes*/
     TOK_KEY_CHAR    = 73,
-    TOK_KEY_RETURN  = 74,
+    TOK_KEY_RETURN  = 74,   /*yes*/
     TOK_KEY_STR     = 75,
     TOK_KEY_SWITCH  = 76,
     TOK_KEY_STATIC  = 77,
     TOK_KEY_DEFAULT = 78,
     TOK_KEY_CASE    = 79,
     TOK_KEY_ASSERT  = 80,
-    TOK_KEY_ELSEIF  = 81,
+    TOK_KEY_ELIF    = 81,   /*yes*/
     TOK_KEY_NEW     = 82,
     TOK_KEY_CLASS   = 83,
-    TOK_KEY_PUBLIC  = 84,
-    TOK_KEY_PRIVATE = 85,
-    TOK_KEY_PROTECT = 86,
+    TOK_KEY_FN      = 84,   /*yes*/
+    TOK_KEY_VAR     = 85,   /*yes*/
+    /*
+    TOK_KEY_PUBLIC  = 85,
+    TOK_KEY_PRIVATE = 86,
+    TOK_KEY_PROTECT = 87,
+    */
 
     /*LIteral*/
     TOK_LI_NUMBER   = 97,
     TOK_LI_BOOL     = 98,
     TOK_LI_STRING   = 99,
-    TOK_LI_CHAR     = 100,//not used, lexer consider every char as strings
 };
 
-struct TokenListNode {
+struct TokenNode {
     unsigned long int line;
     char type;
     char id;
     char *token;
+};
+
+
+
+struct TokenListNode {
+    struct TokenNode *data;
     struct TokenListNode *next;
 };
 
 struct TokenList {
-	int size;
+	unsigned long int size; /* not used */
 	struct TokenListNode *head;
 	struct TokenListNode *tail;
 };
 
 
+
+/*
 struct TokenTreeNode {
-    
+    struct TokenListNode *token;
+    struct 
 };
+
+struct FonctionDeclaration {
+    struct TokenListNode *identifier;
+    struct TokenList *parameters;
+    struct StatementList *statements;
+};
+
+struct TokenTreeStatement {
+    struct TokenListNode *token;
+    struct ExpressionList *expression;
+    struct StatementList *statements;
+}
+
+
+
 
 struct TokenTree {
     int size;
+
 };
+
+union TokenTreeListNode {
+    struct TokenTreeStatement *statement;
+    struct TokenTreeExpression *expression;
+};
+
+struct TokenTreeList {
+    int size;
+    union TokenTreeListNode data;
+    struct TokenTreeList *next;
+};
+
+struct TokenTreeStatement {
+    char keyword;
+    struct TokenTreeExpression *expression;
+    struct TokenTreeList *block;
+};
+
+struct TokenTreeExpression {
+
+};
+*/
+
+/*Logical, comparison, mathematical*/
+/*
+struct Operator {
+    char name;
+    struct *left;
+    struct *right;
+};
+
+union {
+    struct TokenListNode *identifier;
+    struct Operator *operator;
+};
+*/
 
 struct TokenList *token_list_new();
 void token_list_push(struct TokenList *list, const unsigned long int current_line, const char type, const char id, const char *token);

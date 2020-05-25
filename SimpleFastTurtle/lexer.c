@@ -49,7 +49,7 @@ void lexer_process(struct TokenList *s_list_token, char *file_name, int option_s
         token_list_fprintf(stdout, s_list_token);
 
     if (option_print_size)
-        printf("Size: %d\n", s_list_token->size);
+        printf("Size: %ld\n", s_list_token->size);
 }
 
 static void lexer_save(struct TokenList *s_list_token)
@@ -206,6 +206,7 @@ static int lexer_delete_comments(FILE *f, const char current_char, unsigned long
             last = c;
             c = fgetc(f);
         }
+        
         if (c == EOF)
         {
             error_print(ERROR_LEXER_COMMENT_NOT_CLOSED);
@@ -265,6 +266,12 @@ static int lexer_is_keyword(const char token[])
                 return TOK_KEY_FOR;
             if (!strcmp("float", token))
                 return TOK_KEY_FLOAT;
+            if (!strcmp("fn", token))
+                return TOK_KEY_FLOAT;
+            break;
+        case 'v':
+            if (!strcmp("var", token))
+                return TOK_KEY_VAR;
             break;
         case 'i':
             if (!strcmp("if", token))
@@ -279,8 +286,8 @@ static int lexer_is_keyword(const char token[])
         case 'e':
             if (!strcmp("else", token))
                 return TOK_KEY_ELSE;
-            if (!strcmp("elseif", token))
-                return TOK_KEY_ELSEIF;
+            if (!strcmp("elif", token))
+                return TOK_KEY_ELIF;
             break;
         case 'b':
             if (!strcmp("bool", token))
@@ -319,14 +326,6 @@ static int lexer_is_keyword(const char token[])
         case 'n':
             if (!strcmp("new", token))
                 return TOK_KEY_NEW;
-            break;
-        case 'p':
-            if (!strcmp("public", token))
-                return TOK_KEY_PUBLIC;
-            if (!strcmp("private", token))
-                return TOK_KEY_PRIVATE;
-            if (!strcmp("protected", token))
-                return TOK_KEY_PROTECT;
             break;
     }
     return 0;
