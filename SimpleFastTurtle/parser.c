@@ -5,7 +5,13 @@
 
 #include "parser.h"
 
-void parser_process(struct TokenTree *s_tree_token, struct TokenList *s_list_token, int option_save, int option_print_tokens)
+
+#if 0
+void parser_process(struct TokenTree *s_tree_token,
+					struct TokenList *s_list_token,
+					int option_save,
+					int option_print_tokens)
 {
 	printf("kek");
 }
+#endif

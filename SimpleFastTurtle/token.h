@@ -1,7 +1,98 @@
 #ifndef F_TOKEN_H
 #define F_TOKEN_H
 
+void token_fprintf(FILE *output, void *data);
+struct TokenNode *token_new(const unsigned long int current_line,
+                            const char type,
+                            const char id,
+                            const char *token);
+void token_free(void *data);
+
+
+
+struct TokenNode {
+    unsigned long int line;
+    char type;
+    char id;
+    char *token;
+};
+
+#if 0
+struct TokenTree *token_tree_new();
+void token_tree_clear(struct TokenTree *list);
+void token_tree_delete(struct TokenTree *list);
+#endif
+
+
+#if 0
+struct TokenTreeNode {
+    struct TokenNode *token;
+    struct 
+};
+
+struct FonctionDeclaration {
+    struct TokenNode *identifier;
+    struct TokenList *parameters;
+    struct StatementList *statements;
+};
+
+struct TokenTreeStatement {
+    struct TokenNode *token;
+    struct ExpressionList *expression;
+    struct StatementList *statements;
+}
+
+
+
+
+struct TokenTree {
+    int size;
+
+};
+
+union TokenTreeListNode {
+    struct TokenTreeStatement *statement;
+    struct TokenTreeExpression *expression;
+};
+
+struct TokenTreeList {
+    int size;
+    union TokenTreeListNode data;
+    struct TokenTreeList *next;
+};
+
+struct TokenTreeStatement {
+    char keyword;
+    struct TokenTreeExpression *expression;
+    struct TokenTreeList *block;
+};
+
+struct TokenTreeExpression {
+
+};
+
+
+/*Logical, comparison, mathematical*/
+
+struct Operator {
+    char name;
+    struct *left;
+    struct *right;
+};
+
+union {
+    struct TokenListNode *identifier;
+    struct Operator *operator;
+};
+
+#endif
+
 enum {
+    /*
+     *All the literal number are choosen depending on the space
+     *available in the ascii table, that does not interfere with symbols
+     *like a-z and A-Z
+     */
     TOK_TYPE_OP     = 48,
     TOK_TYPE_SEP    = 49,
     TOK_TYPE_KEY    = 50,
@@ -66,111 +157,11 @@ enum {
     TOK_KEY_CLASS   = 83,
     TOK_KEY_FN      = 84,   /*yes*/
     TOK_KEY_VAR     = 85,   /*yes*/
-    /*
-    TOK_KEY_PUBLIC  = 85,
-    TOK_KEY_PRIVATE = 86,
-    TOK_KEY_PROTECT = 87,
-    */
 
     /*LIteral*/
     TOK_LI_NUMBER   = 97,
     TOK_LI_BOOL     = 98,
     TOK_LI_STRING   = 99,
 };
-
-struct TokenNode {
-    unsigned long int line;
-    char type;
-    char id;
-    char *token;
-};
-
-
-
-struct TokenListNode {
-    struct TokenNode *data;
-    struct TokenListNode *next;
-};
-
-struct TokenList {
-	unsigned long int size; /* not used */
-	struct TokenListNode *head;
-	struct TokenListNode *tail;
-};
-
-
-
-/*
-struct TokenTreeNode {
-    struct TokenListNode *token;
-    struct 
-};
-
-struct FonctionDeclaration {
-    struct TokenListNode *identifier;
-    struct TokenList *parameters;
-    struct StatementList *statements;
-};
-
-struct TokenTreeStatement {
-    struct TokenListNode *token;
-    struct ExpressionList *expression;
-    struct StatementList *statements;
-}
-
-
-
-
-struct TokenTree {
-    int size;
-
-};
-
-union TokenTreeListNode {
-    struct TokenTreeStatement *statement;
-    struct TokenTreeExpression *expression;
-};
-
-struct TokenTreeList {
-    int size;
-    union TokenTreeListNode data;
-    struct TokenTreeList *next;
-};
-
-struct TokenTreeStatement {
-    char keyword;
-    struct TokenTreeExpression *expression;
-    struct TokenTreeList *block;
-};
-
-struct TokenTreeExpression {
-
-};
-*/
-
-/*Logical, comparison, mathematical*/
-/*
-struct Operator {
-    char name;
-    struct *left;
-    struct *right;
-};
-
-union {
-    struct TokenListNode *identifier;
-    struct Operator *operator;
-};
-*/
-
-struct TokenList *token_list_new();
-void token_list_push(struct TokenList *list, const unsigned long int current_line, const char type, const char id, const char *token);
-void token_list_foreach(struct TokenList *list, void (*callback)(struct TokenListNode *));
-void token_list_fprintf(FILE *output, struct TokenList *list);
-void token_list_clear(struct TokenList *list);
-void token_list_delete(struct TokenList *list);
-
-struct TokenTree *token_tree_new();
-void token_tree_clear(struct TokenTree *list);
-void token_tree_delete(struct TokenTree *list);
 
 #endif

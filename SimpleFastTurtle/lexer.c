@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "list.h"
 #include "token.h"
 #include "error.h"
 
@@ -17,11 +18,19 @@
  *  Save: Write all tokens in lexer.l
  */
 
-static void lexer_save(struct TokenList *s_list_token);
-static void lexer_tokenize(FILE *f, struct TokenList *s_list_token);
-static int lexer_write_strings(FILE *f, struct TokenList *s_list_token, const char current_char, unsigned long int *current_line);
-static int lexer_delete_comments(FILE *f, const char current_char, unsigned long int *current_line);
-static void lexer_test(struct TokenList *s_list_token, const unsigned long int current_line, const unsigned char token_index, char current_token[]);
+static void lexer_save(struct List *s_list_token);
+static void lexer_tokenize(FILE *f, struct List *s_list_token);
+static int lexer_write_strings(FILE *f,
+                                struct List *s_list_token,
+                                const char current_char,
+                                unsigned long int *current_line);
+static int lexer_delete_comments(FILE *f,
+                                const char current_char,
+                                unsigned long int *current_line);
+static void lexer_test(struct List *s_list_token,
+                        const unsigned long int current_line,
+                        const unsigned char token_index,
+                        char current_token[]);
 static int lexer_is_literal(const char token[]);
 static int lexer_is_keyword(const char token[]);
 static int lexer_is_operator(const char token);
@@ -29,7 +38,12 @@ static int lexer_is_separator(const char token);
 static char lexer_escape_to_char(const char c);
 
 
-void lexer_process(struct TokenList *s_list_token, char *file_name, int option_save, int option_print_tokens, int option_print_size)
+
+void lexer_process(struct List *s_list_token,
+                    char *file_name,
+                    int option_save,
+                    int option_print_tokens,
+                    int option_print_size)
 {
     FILE *f = NULL;
     f = fopen(file_name, "r");
@@ -46,13 +60,13 @@ void lexer_process(struct TokenList *s_list_token, char *file_name, int option_s
         lexer_save(s_list_token);
 
     if (option_print_tokens)
-        token_list_fprintf(stdout, s_list_token);
+        list_fprintf(s_list_token, stdout, token_fprintf);
 
     if (option_print_size)
         printf("Size: %ld\n", s_list_token->size);
 }
 
-static void lexer_save(struct TokenList *s_list_token)
+static void lexer_save(struct List *s_list_token)
 {
     FILE *output = NULL;
     output = fopen("lexer.l", "w+");
@@ -60,13 +74,12 @@ static void lexer_save(struct TokenList *s_list_token)
     if (output == NULL)
         error_print(ERROR_LEXER_FILE_OUTPUT_FAILURE);
 
-    token_list_fprintf(output, s_list_token);
-
+    list_fprintf(s_list_token, output, token_fprintf);
 
     fclose(output);
 }
 
-static void lexer_tokenize(FILE *f, struct TokenList *s_list_token)
+static void lexer_tokenize(FILE *f, struct List *s_list_token)
 {
     unsigned long int current_line = 1;
     unsigned char token_index = 0;
@@ -104,12 +117,12 @@ static void lexer_tokenize(FILE *f, struct TokenList *s_list_token)
                 if (is_operator)
                 {
                     if (!lexer_delete_comments(f, c, &current_line))
-                        token_list_push(s_list_token, current_line, TOK_TYPE_OP, c, current_token);
+                        list_push(s_list_token, token_new(current_line, TOK_TYPE_OP, c, current_token));
                 }
                 else
                 {
                     if (!lexer_write_strings(f, s_list_token, c, &current_line))
-                        token_list_push(s_list_token, current_line, TOK_TYPE_SEP, c, current_token);
+                        list_push(s_list_token, token_new(current_line, TOK_TYPE_SEP, c, current_token));
                 }
             }
             else if (c != '\r')
@@ -126,16 +139,22 @@ static void lexer_tokenize(FILE *f, struct TokenList *s_list_token)
     }
 }
 
-static int lexer_write_strings(FILE *f, struct TokenList *s_list_token, const char current_char, unsigned long int *current_line)
+static int lexer_write_strings(FILE *f,
+                                struct List *s_list_token,
+                                const char current_char,
+                                unsigned long int *current_line)
 {
     if (current_char != '\'' && current_char != '"')
         return 0;
 
     size_t index = 0;
-    size_t size = 10; /* >1 */
+    size_t size = 16; /* >1 otherwise the max size will be 1 (1*2)=1 */
     char *str = malloc(sizeof(char)*size);
 
-    /*Every time there is a backslash, the next letter is inserted with the backslash as one char only*/
+    /*
+     *Every time there is a backslash
+     *the next letter is inserted with the backslash as one char only
+     */
     char c = fgetc(f);
     while (c != EOF && c != current_char && c != '\n')
     {
@@ -169,14 +188,16 @@ static int lexer_write_strings(FILE *f, struct TokenList *s_list_token, const ch
         error_print(ERROR_LEXER_STRING_NOT_CLOSED);
 
     str[index] = '\0';
-    token_list_push(s_list_token, *current_line, TOK_TYPE_LI, TOK_LI_STRING, str);
+    list_push(s_list_token, token_new(*current_line, TOK_TYPE_LI, TOK_LI_STRING, str));
 
     free(str);
 
     return 1;
 }
 
-static int lexer_delete_comments(FILE *f, const char current_char, unsigned long int *current_line)
+static int lexer_delete_comments(FILE *f,
+                                const char current_char,
+                                unsigned long int *current_line)
 {
     if (current_char != '/')
         return 0;
@@ -219,7 +240,10 @@ static int lexer_delete_comments(FILE *f, const char current_char, unsigned long
     return 0;
 }
 
-static void lexer_test(struct TokenList *s_list_token, const unsigned long int current_line, const unsigned char token_index, char current_token[])
+static void lexer_test(struct List *s_list_token,
+                        const unsigned long int current_line,
+                        const unsigned char token_index,
+                        char current_token[])
 {
     if (token_index == 0)
         return;
@@ -229,18 +253,18 @@ static void lexer_test(struct TokenList *s_list_token, const unsigned long int c
     int result = lexer_is_keyword(current_token);
     if (result)
     {
-        token_list_push(s_list_token, current_line, TOK_TYPE_KEY, result, current_token);
+        list_push(s_list_token, token_new(current_line, TOK_TYPE_KEY, result, current_token));
         return;
     }
 
     result = lexer_is_literal(current_token);
     if (result)
     {
-        token_list_push(s_list_token, current_line, TOK_TYPE_LI, result, current_token);
+        list_push(s_list_token, token_new(current_line, TOK_TYPE_LI, result, current_token));
         return;
     }
 
-    token_list_push(s_list_token, current_line, TOK_TYPE_ID, 0, current_token);
+    list_push(s_list_token, token_new(current_line, TOK_TYPE_ID, 0, current_token));
 }
 
 /*Note that string and char are not taken into account here since they require a special state*/
@@ -249,7 +273,8 @@ static int lexer_is_literal(const char token[])
     char first_char = token[0];
     if (first_char >= 48 && first_char <= 57)
         return TOK_LI_NUMBER;
-    if ((first_char == 't' || first_char == 'f') && (!strcmp("true", token) || !strcmp("false", token)))
+    if ((first_char == 't' || first_char == 'f')
+        && (!strcmp("true", token) || !strcmp("false", token)))
         return TOK_LI_BOOL;
     return 0;
 }
