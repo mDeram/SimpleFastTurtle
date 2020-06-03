@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stddef.h>
 
+#include "list.h"
+
 #include "token.h"
 
 void token_fprintf(FILE *output, void *data)
@@ -49,26 +51,71 @@ void token_free(void *data)
 	free(node);
 }
 
-#if 0
-struct TokenTree *token_tree_new()
+
+/* ┌ ┘ └ ┐ ─ | ├ */
+
+void token_tree_fprintf(FILE *output, void *data)
 {
-	struct TokenTree *tree = malloc(sizeof(struct TokenTree));
+	struct Statement *s_tree = (struct Statement*)data;
+	char ident[100] = " ";
+	fprintf(output, " ");
 
-	if (tree == NULL)
-		exit(EXIT_FAILURE);
+	fprintf(output, "%s", s_tree->token->token);
 
-	tree->size = 0;
+	fprintf(output, "\n");
 
-	return tree;
+	void i_apply_ident(FILE *output, void *data, char e_pos)
+	{
+		token_branch_fprintf(output, data, ident, e_pos);
+	}
+
+	if (s_tree->statements != NULL && s_tree->statements->size)
+		list_fprintf_pos(s_tree->statements, output, i_apply_ident);
+
+	fprintf(output, "\n");
 }
 
-void token_tree_clear(struct TokenTree *list)
+void token_branch_fprintf(FILE *output, void *data, char ident[], char e_pos)
+{
+	struct Statement *s_tree = (struct Statement*)data;
+	fprintf(output, "%s", ident);
+	if (e_pos == LIST_END || e_pos == LIST_ALL)
+		fprintf(output, "└─");
+	else
+		fprintf(output, "├─");
+
+	fprintf(output, "%s", s_tree->token->token);
+
+	fprintf(output, "\n");
+
+	if (s_tree->statements != NULL && s_tree->statements->size)
+	{
+		int i = 0;
+		while(ident[i] != '\0')
+		{
+			i++;
+		}
+		if (e_pos == LIST_END || e_pos == LIST_ALL)
+		{
+			ident[i] = ' ';
+			ident[i+1] = ' ';
+		}
+		else
+		{
+			ident[i] = '|';
+			ident[i+1] = ' ';
+		}
+		void i_apply_ident(FILE *output, void *data, char e_pos)
+		{
+			token_branch_fprintf(output, data, ident, e_pos);
+		}
+		list_fprintf_pos(s_tree->statements, output, i_apply_ident);
+		ident[i] = '\0';
+	}
+}
+/*
+void token_branch_free(void *data)
 {
 
 }
-
-void token_tree_delete(struct TokenTree *list)
-{
-
-}
-#endif
+*/

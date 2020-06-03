@@ -292,7 +292,7 @@ static int lexer_is_keyword(const char token[])
             if (!strcmp("float", token))
                 return TOK_KEY_FLOAT;
             if (!strcmp("fn", token))
-                return TOK_KEY_FLOAT;
+                return TOK_KEY_FN;
             break;
         case 'v':
             if (!strcmp("var", token))
@@ -351,6 +351,8 @@ static int lexer_is_keyword(const char token[])
         case 'n':
             if (!strcmp("new", token))
                 return TOK_KEY_NEW;
+            if (!strcmp("null", token))
+                return TOK_KEY_NULL;
             break;
     }
     return 0;

@@ -10,6 +10,9 @@ void token_free(void *data);
 
 
 
+void token_tree_fprintf(FILE *output, void *data);
+void token_branch_fprintf(FILE *output, void *data, char ident[], char e_pos);
+
 struct TokenNode {
     unsigned long int line;
     char type;
@@ -17,75 +20,83 @@ struct TokenNode {
     char *token;
 };
 
-#if 0
-struct TokenTree *token_tree_new();
-void token_tree_clear(struct TokenTree *list);
-void token_tree_delete(struct TokenTree *list);
-#endif
 
+/*
+void token_tree_clear(struct TokenTree *tree);
+void token_tree_delete(struct TokenTree *tree);
+*/
 
-#if 0
-struct TokenTreeNode {
-    struct TokenNode *token;
-    struct 
-};
 
 struct FonctionDeclaration {
-    struct TokenNode *identifier;
-    struct TokenList *parameters;
-    struct StatementList *statements;
+    struct TokenNode *name;
+    struct List *expressions;
+    struct List *statements;
 };
 
-struct TokenTreeStatement {
+struct VariableDeclaration {
+    struct TokenNode *name;
+    struct Expression *expression;
+};
+
+struct GeneralStatement {
+    struct List *expressions;
+    struct List *statements;
+};
+
+#if 0
+struct Statement {
     struct TokenNode *token;
-    struct ExpressionList *expression;
-    struct StatementList *statements;
-}
-
-
-
-
-struct TokenTree {
-    int size;
-
+    union {
+        struct { /* variable declaration */
+            struct TokenNode *name;
+            struct Expression *expression;
+        };
+        struct { /* function declaration */
+            struct TokenNode *name;
+            struct List *expressions;
+            struct List *statements;
+        };
+        struct { /* general statement */
+            struct List *expressions;
+            struct List *statements;
+        };
+    };
 };
 
-union TokenTreeListNode {
-    struct TokenTreeStatement *statement;
-    struct TokenTreeExpression *expression;
+#else
+
+struct Statement {
+    struct TokenNode *token;
+    struct TokenNode *name;
+    union {
+        struct Expression *expression;
+        struct {
+            struct List *expressions;
+            struct List *statements;
+        };
+    };
 };
 
-struct TokenTreeList {
-    int size;
-    union TokenTreeListNode data;
-    struct TokenTreeList *next;
+#endif
+
+struct Expression {
+    //struct
+    union {
+        //struct Operator *operator;
+        struct TokenNode *identifier;
+        struct TokenNode *litteral;
+    };
 };
-
-struct TokenTreeStatement {
-    char keyword;
-    struct TokenTreeExpression *expression;
-    struct TokenTreeList *block;
-};
-
-struct TokenTreeExpression {
-
-};
-
 
 /*Logical, comparison, mathematical*/
-
+/*
 struct Operator {
     char name;
     struct *left;
     struct *right;
-};
+};*/
 
-union {
-    struct TokenListNode *identifier;
-    struct Operator *operator;
-};
 
-#endif
 
 enum {
     /*
@@ -157,6 +168,7 @@ enum {
     TOK_KEY_CLASS   = 83,
     TOK_KEY_FN      = 84,   /*yes*/
     TOK_KEY_VAR     = 85,   /*yes*/
+    TOK_KEY_NULL    = 86,   /*yes*/
 
     /*LIteral*/
     TOK_LI_NUMBER   = 97,

@@ -52,6 +52,26 @@ void list_fprintf(struct List *list, FILE *output, void (*callback)(FILE *, void
 	}
 }
 
+void list_fprintf_pos(struct List *list, FILE *output, void (*callback)(FILE *, void *, char))
+{
+	if (list->size == 1)
+	{
+		(*callback)(output, list->head->data, LIST_ALL);
+	}
+	else
+	{
+		struct ListNode *node = list->head;
+		(*callback)(output, node->data, LIST_START);
+		for (int i = 1; i < list->size-1; i++)
+		{
+			node = node->next;
+			(*callback)(output, node->data, LIST_INSIDE);
+		}
+		node = node->next;
+		(*callback)(output, node->data, LIST_END);
+	}
+}
+
 void list_foreach(struct List *list, void (*callback)(void *))
 {
 	struct ListNode *node = list->head;

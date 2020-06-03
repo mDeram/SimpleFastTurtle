@@ -6,12 +6,17 @@
 
 static void error_print_id(int error_id);
 
+/* o = lu */
 const char *c_error_list[100] = {
 	"FILE \"%s\" NOT FOUND FOUND", "s",
 	"FAILED TO OPEN \"lexer.l\"", "",
 	"IDENTIFIER LONGER THAN 90 CHAR :\n%s", "s",
 	"A STRING HAS NOT BEEN CLOSED", "",
 	"A BLOCK COMMENT HAS NOT BEEN CLOSED", "",
+
+	"INVALID NUMBER OF PARAMETERS IN STATEMENT - LINE : %lu", "o",
+	"INVALID STATEMENT BLOCK START - LINE : %lu", "o",
+	"INVALID STATEMENT BLOCK END - LINE : %lu", "o",
 };
 
 static void error_print_id(int error_id)
@@ -32,6 +37,9 @@ void error_printd(int error_id, void *data)
 	{
 		case 's':
 			fprintf(stderr, c_error_list[error_id*2], (char *)data);
+			break;
+		case 'o':
+			fprintf(stderr, c_error_list[error_id*2], *(unsigned long *)data);
 			break;
 	}
 	exit(EXIT_FAILURE);
