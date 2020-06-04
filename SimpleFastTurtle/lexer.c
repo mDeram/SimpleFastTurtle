@@ -34,6 +34,7 @@ static void lexer_test(struct List *s_list_token,
 static int lexer_is_literal(const char token[]);
 static int lexer_is_keyword(const char token[]);
 static int lexer_is_operator(const char token);
+static int lexer_is_double_operator(const char op1, const char op2);
 static int lexer_is_separator(const char token);
 static char lexer_escape_to_char(const char c);
 
@@ -117,7 +118,33 @@ static void lexer_tokenize(FILE *f, struct List *s_list_token)
                 if (is_operator)
                 {
                     if (!lexer_delete_comments(f, c, &current_line))
-                        list_push(s_list_token, token_new(current_line, TOK_TYPE_OP, c, current_token));
+                    {
+                        /*before adding it, checking if the last oken is an operator and if he is
+                         *(and is not a double operator) then reuse it to create the doubel operator
+                         */
+                        struct TokenNode *s_last_token = (struct TokenNode *)s_list_token->tail->data;
+                        if (s_last_token->type == TOK_TYPE_OP && s_last_token->id > 15)
+                        {
+                            char id = lexer_is_double_operator(s_last_token->token[0], current_token[0]);
+                            if (id)
+                            {
+                                current_token[1] = current_token[0];
+                                current_token[0] = s_last_token->token[0];
+                                current_token[2] = '\0';
+                                struct TokenNode *s_new_token = token_new(current_line, TOK_TYPE_OP, id, current_token);
+                                token_free(s_last_token);
+                                s_list_token->tail->data = s_new_token;
+                            }
+                            else
+                            {
+                                list_push(s_list_token, token_new(current_line, TOK_TYPE_OP, c, current_token));
+                            }
+                        }
+                        else
+                        {
+                            list_push(s_list_token, token_new(current_line, TOK_TYPE_OP, c, current_token));
+                        }
+                    }
                 }
                 else
                 {
@@ -362,7 +389,7 @@ static int lexer_is_operator(const char token)
 {
     switch(token)
     {
-        case TOK_OP_EQUAL:
+        case TOK_OP_ASIGN:
         case TOK_OP_NOT:
         case TOK_OP_INF:
         case TOK_OP_SUP:
@@ -379,6 +406,64 @@ static int lexer_is_operator(const char token)
             return 0;
     }
 }
+
+static int lexer_is_double_operator(const char op1, const char op2)
+{
+    /*
+     * Evaluating op1 first gives us 11 case and 15 if
+     * Evaluating op2 first gives us 7  case and 15 if (2 big subcase in fact)
+     */
+    if (op2 == op1)
+    {
+        switch(op1)
+        {
+            case TOK_OP_ADD:
+                return TOK_OP_INCR;
+            case TOK_OP_SUB:
+                return TOK_OP_DECR;
+            case TOK_OP_BY:
+                return TOK_OP_EXPO;
+            case TOK_OP_DIV:
+                return TOK_OP_SQRT;
+            case TOK_OP_AND:
+                return TOK_OP_LOGIC_AND;
+            case TOK_OP_OR:
+                return TOK_OP_LOGIC_OR;
+        }
+    }
+    else if (op2 == TOK_OP_ASIGN)
+    {
+        switch(op1)
+        {
+            case TOK_OP_ASIGN:
+                return TOK_OP_EQUAL;
+            case TOK_OP_NOT:
+                return TOK_OP_NOT_EQUAL;
+            case TOK_OP_INF:
+                return TOK_OP_INF_EQUAL;
+            case TOK_OP_SUP:
+                return TOK_OP_SUP_EQUAL;
+            case TOK_OP_ADD:
+                return TOK_OP_ADD_ASIGN;
+            case TOK_OP_SUB:
+                return TOK_OP_SUB_ASIGN;
+            case TOK_OP_BY:
+                return TOK_OP_BY_ASIGN;
+            case TOK_OP_DIV:
+                return TOK_OP_DIV_ASIGN;
+        }
+    }
+    return 0;
+}
+
+#if 0
+    TOK_OP_INCR     = 1,    /* "++" */
+    TOK_OP_DECR     = 2,    /* "--" */
+    TOK_OP_EXPO     = 3,    /* "**" */
+    TOK_OP_SQRT     = 4,    /* "//" */
+    TOK_OP_LOGIC_AND= 9,    /* "&&" */
+    TOK_OP_LOGIC_OR = 10,   /* "||" */
+#endif
 
 static int lexer_is_separator(const char token)
 {

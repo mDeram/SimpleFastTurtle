@@ -66,6 +66,9 @@ static int parser_next(struct ListNode **p_cur_node, struct TokenNode **p_cur_to
 
 static struct Statement *parser_statement(struct ListNode **p_cur_node, struct TokenNode **p_cur_token)
 {
+	printf("statement\n");
+
+	/*remove all ; before parsing the statement*/
 	unsigned long int temp_line = (*p_cur_token)->line;
 	while ((*p_cur_token)->id == TOK_SEP_SEMI)
 	{
@@ -76,6 +79,7 @@ static struct Statement *parser_statement(struct ListNode **p_cur_node, struct T
 	if ((*p_cur_token)->id == TOK_SEP_CBE)
 		return NULL;
 
+	/*parse the statement recursively*/
 	struct Statement *s_statement = malloc(sizeof(struct Statement));
 	s_statement->token = *p_cur_token;
 	s_statement->name = NULL;
@@ -96,14 +100,8 @@ static struct Statement *parser_statement(struct ListNode **p_cur_node, struct T
 
 				while ((*p_cur_token)->id != TOK_SEP_CBS)
 				{
-					if ((*p_cur_token)->id == TOK_SEP_COMMA) /* , expression removes comma before ?*/
-					{
-						if (parser_next(p_cur_node, p_cur_token))
-							error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END,
-										&s_statement->token->line);
-					}
 					list_push(s_statement->expressions,
-								parser_expression(p_cur_node, p_cur_token));
+								parser_expression(p_cur_node, p_cur_token)); /*todo check if expression not null*/
 				}
 
 				if (s_statement->expressions->size == 0)
@@ -237,9 +235,26 @@ static struct Statement *parser_statement(struct ListNode **p_cur_node, struct T
 
 static struct Expression *parser_expression(struct ListNode **p_cur_node, struct TokenNode **p_cur_token)
 {
-	/* remove ',' before */
-	parser_next(p_cur_node, p_cur_token);
 	printf("expression\n");
+
+	/*remove all , before parsing the statement*/
+	unsigned long int temp_line = (*p_cur_token)->line;
+	while ((*p_cur_token)->id == TOK_SEP_COMMA)
+	{
+		if (parser_next(p_cur_node, p_cur_token)) /* , */
+			error_printd(ERROR_PARSER_INVALID_EXPRESSION, &temp_line);
+	}
+
+	if ((*p_cur_token)->id == TOK_SEP_CBS)
+		return NULL;
+
+	/*parse the expression recursively*/
+	struct Expression *s_expression = malloc(sizeof(struct Expression));
+	//s_expression->token = *p_cur_token;
+
+	parser_next(p_cur_node, p_cur_token);
+
+	return s_expression;
 }
 
 static struct Expression *parser_expression_null()

@@ -96,15 +96,11 @@ void token_branch_fprintf(FILE *output, void *data, char ident[], char e_pos)
 			i++;
 		}
 		if (e_pos == LIST_END || e_pos == LIST_ALL)
-		{
 			ident[i] = ' ';
-			ident[i+1] = ' ';
-		}
 		else
-		{
 			ident[i] = '|';
-			ident[i+1] = ' ';
-		}
+		
+		ident[i+1] = ' ';
 		void i_apply_ident(FILE *output, void *data, char e_pos)
 		{
 			token_branch_fprintf(output, data, ident, e_pos);

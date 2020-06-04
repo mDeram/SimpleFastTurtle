@@ -17,6 +17,7 @@ const char *c_error_list[100] = {
 	"INVALID NUMBER OF PARAMETERS IN STATEMENT - LINE : %lu", "o",
 	"INVALID STATEMENT BLOCK START - LINE : %lu", "o",
 	"INVALID STATEMENT BLOCK END - LINE : %lu", "o",
+	"INVALID EXPRESSION - LINE : %lu", "o",
 };
 
 static void error_print_id(int error_id)
