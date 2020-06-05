@@ -122,7 +122,8 @@ static struct Statement *parser_statement(struct ListNode **p_cur_node, struct T
 					warning_printd(WARNING_PARSER_EMPTY_STATEMENT, &s_statement->token->line);
 
 				if (parser_next(p_cur_node, p_cur_token)) /* } */
-					error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &s_statement->token->line);
+					break;
+				//error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &s_statement->token->line);
 
 				break;
 
@@ -141,10 +142,8 @@ static struct Statement *parser_statement(struct ListNode **p_cur_node, struct T
 
 				while ((*p_cur_token)->id != TOK_SEP_CBS)
 				{
-					printf("While id 0 %d\n", (*p_cur_token)->id);
 					list_push(s_statement->expressions,
 								parser_expression(p_cur_node, p_cur_token));
-					printf("While id 1 %d\n", (*p_cur_token)->id);
 				}
 
 				if (parser_next(p_cur_node, p_cur_token)) /* { */
@@ -152,12 +151,10 @@ static struct Statement *parser_statement(struct ListNode **p_cur_node, struct T
 
 				while ((*p_cur_token)->id != TOK_SEP_CBE)
 				{
-					printf("yayx\n");
 					struct Statement *s_new_statement
 							= parser_statement(p_cur_node, p_cur_token);
 					if (s_new_statement)
 						list_push(s_statement->statements, s_new_statement);
-
 				}
 
 				if (s_statement->statements->size == 0)
@@ -245,15 +242,47 @@ static struct Expression *parser_expression(struct ListNode **p_cur_node, struct
 			error_printd(ERROR_PARSER_INVALID_EXPRESSION, &temp_line);
 	}
 
-	if ((*p_cur_token)->id == TOK_SEP_CBS)
+	if ((*p_cur_token)->id == TOK_SEP_CBS || (*p_cur_token)->id == TOK_SEP_SEMI)
 		return NULL;
 
 	/*parse the expression recursively*/
 	struct Expression *s_expression = malloc(sizeof(struct Expression));
 	//s_expression->token = *p_cur_token;
 
-	parser_next(p_cur_node, p_cur_token);
+	/* 
+	 * Find a litteral or identifier
+	 * Then check the operator/separator at his left, and at his right
+	 * If there is only one OP then apply the op to him (which mean that the op nest him either at
+	 * his left of his right)
+	 * If there are 2 OP then check for the precedence between them, then nest the operation that
+	 * have a highest precedence with the LI/ID to the left/right of the OP with the least precedence
+	 *
+	 * Separators are being check more "manually" in the code because they come together
+	 * for the brackets and the behavior is different than operator
+	 */
+	int round_bracket_stack = 0;
+	while ((*p_cur_token)->id != TOK_SEP_CBS
+		&& (*p_cur_token)->id != TOK_SEP_SEMI
+		&& (*p_cur_token)->id != TOK_SEP_COMMA)
+	{
+		if ((*p_cur_token)->id == TOK_SEP_RBS)
+			round_bracket_stack++;
+		else if ((*p_cur_token)->id == TOK_SEP_RBE)
+		{
+			round_bracket_stack--;
+			if (round_bracket_stack < 0)
+				;//error
+		}
+		else if (!round_bracket_stack)
+		{
+			//parse expression
+		}
+		
+		if (parser_next(p_cur_node, p_cur_token))
+			;//error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
+	}
 
+	printf("end expression\n");
 	return s_expression;
 }
 
@@ -261,3 +290,89 @@ static struct Expression *parser_expression_null()
 {
 
 }
+
+
+
+/*
+ * From :
+ * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
+ */
+short OPERATOR_PRECEDENCE[127] = {
+/* Single operators */
+	[TOK_OP_ASIGN]		= 3,
+	[TOK_OP_NOT]		= 17,
+	[TOK_OP_INF]		= 12,
+	[TOK_OP_SUP]		= 12,
+	[TOK_OP_OR]			= 8,
+	[TOK_OP_AND]		= 10,
+	[TOK_OP_XOR]		= 9,
+	[TOK_OP_ADD]		= 17,
+	[TOK_OP_SUB]		= 17,
+	[TOK_OP_BY]			= 15,
+	[TOK_OP_DIV]		= 15,
+	[TOK_OP_MOD]		= 15,
+
+/* Double operators */
+	[TOK_OP_INCR]		= 17,
+	[TOK_OP_DECR]		= 17,
+	[TOK_OP_EXPO]		= 16,
+	[TOK_OP_SQRT]		= 16,
+	[TOK_OP_EQUAL]		= 11,
+	[TOK_OP_NOT_EQUAL]	= 11,
+	[TOK_OP_INF_EQUAL]	= 12,
+	[TOK_OP_SUP_EQUAL]	= 12,
+	[TOK_OP_LOGIC_AND]	= 6,
+	[TOK_OP_LOGIC_OR]	= 5,
+	[TOK_OP_ADD_ASIGN]	= 3,
+	[TOK_OP_SUB_ASIGN]	= 3,
+	[TOK_OP_BY_ASIGN]	= 3,
+	[TOK_OP_DIV_ASIGN]	= 3,
+	[TOK_OP_MOD_ASIGN]	= 3,
+
+/* Separator */
+	[TOK_SEP_RBS]		= 21,
+	[TOK_SEP_RBE]		= 21,
+	[TOK_SEP_SBS]		= 20,
+	[TOK_SEP_SBE]		= 20,
+	[TOK_SEP_DOT]		= 20,
+};
+
+short OPERATOR_ASSOCIATIVITY[127] = {
+/* Single operators */
+	[TOK_OP_ASIGN]		= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_NOT]		= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_INF]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_SUP]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_OR]			= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_AND]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_XOR]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_ADD]		= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_SUB]		= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_BY]			= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_DIV]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_MOD]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+
+/* Double operators */
+	[TOK_OP_INCR]		= ASSOCIATIVITY_NA,
+	[TOK_OP_DECR]		= ASSOCIATIVITY_NA,
+	[TOK_OP_EXPO]		= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_SQRT]		= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_EQUAL]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_NOT_EQUAL]	= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_INF_EQUAL]	= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_SUP_EQUAL]	= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_LOGIC_AND]	= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_LOGIC_OR]	= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_OP_ADD_ASIGN]	= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_SUB_ASIGN]	= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_BY_ASIGN]	= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_DIV_ASIGN]	= ASSOCIATIVITY_RIGHT_TO_LEFT,
+	[TOK_OP_MOD_ASIGN]	= ASSOCIATIVITY_RIGHT_TO_LEFT,
+
+/* Separator */
+	[TOK_SEP_RBS]		= ASSOCIATIVITY_NA,
+	[TOK_SEP_RBE]		= ASSOCIATIVITY_NA,
+	[TOK_SEP_SBS]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_SEP_SBE]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+	[TOK_SEP_DOT]		= ASSOCIATIVITY_LEFT_TO_RIGHT,
+};

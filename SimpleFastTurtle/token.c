@@ -57,7 +57,7 @@ void token_free(void *data)
 void token_tree_fprintf(FILE *output, void *data)
 {
 	struct Statement *s_tree = (struct Statement*)data;
-	char ident[100] = " ";
+	char ident[1000] = " ";
 	fprintf(output, " ");
 
 	fprintf(output, "%s", s_tree->token->token);
@@ -66,7 +66,7 @@ void token_tree_fprintf(FILE *output, void *data)
 
 	void i_apply_ident(FILE *output, void *data, char e_pos)
 	{
-		token_branch_fprintf(output, data, ident, e_pos);
+		token_statement_fprintf(output, data, ident, e_pos);
 	}
 
 	if (s_tree->statements != NULL && s_tree->statements->size)
@@ -75,42 +75,114 @@ void token_tree_fprintf(FILE *output, void *data)
 	fprintf(output, "\n");
 }
 
-void token_branch_fprintf(FILE *output, void *data, char ident[], char e_pos)
+void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos)
 {
-	struct Statement *s_tree = (struct Statement*)data;
+	struct Statement *s_statement = (struct Statement*)data;
+
+	/* Before : Next gen display */
 	fprintf(output, "%s", ident);
 	if (e_pos == LIST_END || e_pos == LIST_ALL)
 		fprintf(output, "└─");
 	else
 		fprintf(output, "├─");
 
-	fprintf(output, "%s", s_tree->token->token);
+	/* Token */
+	fprintf(output, "%s", s_statement->token->token);
 
-	fprintf(output, "\n");
-
-	if (s_tree->statements != NULL && s_tree->statements->size)
+	/* After : Content of the statement with updated ident */
+	int i = 0;
+	while(ident[i] != '\0')
 	{
-		int i = 0;
-		while(ident[i] != '\0')
-		{
-			i++;
-		}
-		if (e_pos == LIST_END || e_pos == LIST_ALL)
-			ident[i] = ' ';
-		else
-			ident[i] = '|';
-		
-		ident[i+1] = ' ';
+		i++;
+	}
+	if (e_pos == LIST_END || e_pos == LIST_ALL)
+		ident[i] = ' ';
+	else
+		ident[i] = '|';
+	
+	ident[i+1] = ' ';
+	ident[i+2] = '\0';
+
+	/* Big ident */
+	if (s_statement->statements != NULL && s_statement->statements->size)
+		ident[i+2] = '|';
+	else
+		ident[i+2] = ' ';
+	ident[i+3] = ' ';
+	ident[i+4] = '\0';
+
+	if (s_statement->token->id == TOK_KEY_VAR && s_statement->expression)
+	{
+		fprintf(output, "┐");
+		fprintf(output, "\n");
+		token_expression_fprintf(output, s_statement->expression, ident, e_pos);
+	}
+	else if (s_statement->expressions != NULL && s_statement->expressions->size)
+	{
+		fprintf(output, "┐");
+		fprintf(output, "\n");
 		void i_apply_ident(FILE *output, void *data, char e_pos)
 		{
-			token_branch_fprintf(output, data, ident, e_pos);
+			token_expression_fprintf(output, data, ident, e_pos);
 		}
-		list_fprintf_pos(s_tree->statements, output, i_apply_ident);
-		ident[i] = '\0';
+		list_fprintf_pos(s_statement->expressions, output, i_apply_ident);
 	}
+	else
+	{
+		fprintf(output, "\n");
+	}
+	/* Reset big ident */
+	ident[i+2] = '\0';
+
+	if (s_statement->statements != NULL && s_statement->statements->size)
+	{
+		void i_apply_ident(FILE *output, void *data, char e_pos)
+		{
+			token_statement_fprintf(output, data, ident, e_pos);
+		}
+		list_fprintf_pos(s_statement->statements, output, i_apply_ident);
+	}
+
+	/* Reset ident */
+	ident[i] = '\0';
 }
+
+void token_expression_fprintf(FILE *output, void *data, char ident[], char e_pos)
+{
+	struct Expression *s_expression = (struct Expression*)data;
+
+	/* Before : Next gen display */
+	fprintf(output, "%s", ident);
+	if (e_pos == LIST_END || e_pos == LIST_ALL)
+		fprintf(output, "└─");
+	else
+		fprintf(output, "├─");
+
+	/* Operator */
+	//fprintf(output, "%s", s_expression->token->token);
+	fprintf(output, "Expr\n");
+	/* After : Content of the statement with updated ident */
+	int i = 0;
+	while(ident[i] != '\0')
+	{
+		i++;
+	}
+	if (e_pos == LIST_END || e_pos == LIST_ALL)
+		ident[i] = ' ';
+	else
+		ident[i] = '|';
+	
+	ident[i+1] = ' ';
+
+	/* Print expressions recursively */
+
+
+	/* Reset ident */
+	ident[i] = '\0';
+}
+
 /*
-void token_branch_free(void *data)
+void token_s_statement_free(void *data)
 {
 
 }

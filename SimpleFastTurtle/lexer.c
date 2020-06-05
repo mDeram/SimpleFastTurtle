@@ -115,41 +115,34 @@ static void lexer_tokenize(FILE *f, struct List *s_list_token)
                 current_token[0] = c;
                 current_token[1] = '\0';
 
-                if (is_operator)
+                if (is_operator && !lexer_delete_comments(f, c, &current_line))
                 {
-                    if (!lexer_delete_comments(f, c, &current_line))
+                    /*before adding it, checking if the last token is a simple operator and if he is
+                     *then delete it and create a double operator
+                     */
+                    struct TokenNode *s_last_token = (struct TokenNode *)s_list_token->tail->data;
+                    char id = 0;
+
+                    if (s_last_token->type == TOK_TYPE_OP && s_last_token->id > 15)
+                        id = lexer_is_double_operator(s_last_token->token[0], current_token[0]);
+
+                    if (id)
                     {
-                        /*before adding it, checking if the last oken is an operator and if he is
-                         *(and is not a double operator) then reuse it to create the doubel operator
-                         */
-                        struct TokenNode *s_last_token = (struct TokenNode *)s_list_token->tail->data;
-                        if (s_last_token->type == TOK_TYPE_OP && s_last_token->id > 15)
-                        {
-                            char id = lexer_is_double_operator(s_last_token->token[0], current_token[0]);
-                            if (id)
-                            {
-                                current_token[1] = current_token[0];
-                                current_token[0] = s_last_token->token[0];
-                                current_token[2] = '\0';
-                                struct TokenNode *s_new_token = token_new(current_line, TOK_TYPE_OP, id, current_token);
-                                token_free(s_last_token);
-                                s_list_token->tail->data = s_new_token;
-                            }
-                            else
-                            {
-                                list_push(s_list_token, token_new(current_line, TOK_TYPE_OP, c, current_token));
-                            }
-                        }
-                        else
-                        {
-                            list_push(s_list_token, token_new(current_line, TOK_TYPE_OP, c, current_token));
-                        }
+                        current_token[1] = current_token[0];
+                        current_token[0] = s_last_token->token[0];
+                        current_token[2] = '\0';
+                        struct TokenNode *s_new_token = token_new(current_line, TOK_TYPE_OP, id, current_token);
+                        token_free(s_last_token);
+                        s_list_token->tail->data = s_new_token;
+                    }
+                    else
+                    {
+                        list_push(s_list_token, token_new(current_line, TOK_TYPE_OP, c, current_token));
                     }
                 }
-                else
+                else if(is_separator && !lexer_write_strings(f, s_list_token, c, &current_line))
                 {
-                    if (!lexer_write_strings(f, s_list_token, c, &current_line))
-                        list_push(s_list_token, token_new(current_line, TOK_TYPE_SEP, c, current_token));
+                    list_push(s_list_token, token_new(current_line, TOK_TYPE_SEP, c, current_token));
                 }
             }
             else if (c != '\r')
@@ -277,17 +270,17 @@ static void lexer_test(struct List *s_list_token,
 
     current_token[token_index] = '\0';
 
-    int result = lexer_is_keyword(current_token);
-    if (result)
-    {
-        list_push(s_list_token, token_new(current_line, TOK_TYPE_KEY, result, current_token));
-        return;
-    }
-
-    result = lexer_is_literal(current_token);
+    int result = lexer_is_literal(current_token);
     if (result)
     {
         list_push(s_list_token, token_new(current_line, TOK_TYPE_LI, result, current_token));
+        return;
+    }
+
+    result = lexer_is_keyword(current_token);
+    if (result)
+    {
+        list_push(s_list_token, token_new(current_line, TOK_TYPE_KEY, result, current_token));
         return;
     }
 
