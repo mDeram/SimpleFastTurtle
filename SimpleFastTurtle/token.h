@@ -10,16 +10,16 @@ void token_free(void *data);
 
 
 
-void token_tree_fprintf(FILE *output, void *data);
+void token_tree_fprintf(FILE *output, struct List *s_tree_token);
 void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos);
 void token_expression_fprintf(FILE *output, void *data, char ident[], char e_pos);
-
+void token_expression_tree_fprintf(FILE *output, void *data, char ident[]);
 
 
 struct TokenNode {
 	unsigned long int line;
-	char type;
-	char id;
+	unsigned char type;
+	unsigned char id;
 	char *token;
 };
 
@@ -84,10 +84,11 @@ struct Statement {
 
 struct Expression {
 	//struct
+	unsigned char type;
 	union {
 		struct Operator *operator;
 		struct TokenNode *identifier;
-		struct TokenNode *litteral;
+		struct TokenNode *literal;
 	};
 };
 
@@ -99,7 +100,11 @@ struct Operator {
 	struct Expression *right;
 };
 
-
+enum {
+	EXPRESSION_TYPE_OP,
+	EXPRESSION_TYPE_ID,
+	EXPRESSION_TYPE_LI
+};
 
 enum {
 	/*

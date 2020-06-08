@@ -16,7 +16,14 @@ static void parser_parse(struct List *s_tree_token, struct List *s_list_token);
 static int parser_next(struct ListNode **cur_node, struct TokenNode **cur_token);
 static struct Statement *parser_statement(struct ListNode **p_cur_node, struct TokenNode **p_cur_token);
 static struct Expression *parser_expression(struct ListNode **p_cur_node, struct TokenNode **p_cur_token);
+static int parser_is_precedent(const unsigned char op1, const unsigned char op2);
 static struct Expression *parser_expression_null();
+static void parser_remove_useless_round_brackets(struct TokenNode **expression_arr,
+												int *start,
+												int *stop);
+static struct Expression *parser_nested_expression(struct TokenNode **expression_arr,
+													int start,
+													int stop);
 
 void parser_process(struct List *s_tree_token,
 					struct List *s_list_token,
@@ -31,7 +38,7 @@ void parser_process(struct List *s_tree_token,
 
     
     if (option_print_tree)
-        list_fprintf(s_tree_token, stdout, token_tree_fprintf);
+    	token_tree_fprintf(stdout, s_tree_token);
 }
 
 static void parser_save(struct List *s_tree_token, struct List *s_list_token)
@@ -234,7 +241,7 @@ static struct Expression *parser_expression(struct ListNode **p_cur_node, struct
 {
 	printf("expression\n");
 
-	/*remove all , before parsing the statement*/
+	/*remove all ',' before parsing the statement*/
 	unsigned long int temp_line = (*p_cur_token)->line;
 	while ((*p_cur_token)->id == TOK_SEP_COMMA)
 	{
@@ -242,48 +249,163 @@ static struct Expression *parser_expression(struct ListNode **p_cur_node, struct
 			error_printd(ERROR_PARSER_INVALID_EXPRESSION, &temp_line);
 	}
 
-	if ((*p_cur_token)->id == TOK_SEP_CBS || (*p_cur_token)->id == TOK_SEP_SEMI)
-		return NULL;
+	/* Count Expression size and check if there is as much opening and closing round brackets */
+	int bracket_stack = 0;
+	unsigned int expression_size = 0;
+	struct ListNode *copy_node = *p_cur_node;
 
-	/*parse the expression recursively*/
-	struct Expression *s_expression = malloc(sizeof(struct Expression));
-	//s_expression->token = *p_cur_token;
-
-	/* 
-	 * Find a litteral or identifier
-	 * Then check the operator/separator at his left, and at his right
-	 * If there is only one OP then apply the op to him (which mean that the op nest him either at
-	 * his left of his right)
-	 * If there are 2 OP then check for the precedence between them, then nest the operation that
-	 * have a highest precedence with the LI/ID to the left/right of the OP with the least precedence
-	 *
-	 * Separators are being check more "manually" in the code because they come together
-	 * for the brackets and the behavior is different than operator
-	 */
-	int round_bracket_stack = 0;
 	while ((*p_cur_token)->id != TOK_SEP_CBS
 		&& (*p_cur_token)->id != TOK_SEP_SEMI
 		&& (*p_cur_token)->id != TOK_SEP_COMMA)
 	{
+		expression_size++;
+
 		if ((*p_cur_token)->id == TOK_SEP_RBS)
-			round_bracket_stack++;
+			bracket_stack++;
 		else if ((*p_cur_token)->id == TOK_SEP_RBE)
-		{
-			round_bracket_stack--;
-			if (round_bracket_stack < 0)
-				;//error
-		}
-		else if (!round_bracket_stack)
-		{
-			//parse expression
-		}
-		
-		if (parser_next(p_cur_node, p_cur_token))
-			;//error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
+			bracket_stack--;
+
+		if (bracket_stack < 0 || parser_next(p_cur_node, p_cur_token))
+			break;
 	}
 
+	if (!bracket_stack)
+		; //error invalid expression
+
+	/* Copy the expression to an array */
+	struct TokenNode **expression_arr = malloc(sizeof(struct TokenNode*)*expression_size);
+
+	for (int i = 0; i < expression_size; i++)
+	{
+		expression_arr[i] = (struct TokenNode*)copy_node->data;
+		copy_node = copy_node->next;
+	}
+
+	struct Expression *s_expression
+			= parser_nested_expression(expression_arr, 0, expression_size-1);
+
+	free(expression_arr);
 	printf("end expression\n");
 	return s_expression;
+}
+
+/* 
+ * Find a litteral or identifier
+ * Then check the operator/separator at his left, and at his right
+ * If there is only one OP then apply the op to him (which mean that the op nest him either at
+ * his left of his right)
+ * If there are 2 OP then check for the precedence between them, then nest the operation that
+ * have a highest precedence with the LI/ID to the left/right of the OP with the least precedence
+ *
+ * Separators are being check more "manually" in the code because they come together
+ * for the brackets and the behavior is different than operator
+ */
+static struct Expression *parser_nested_expression(struct TokenNode **expression_arr,
+													int start,
+													int stop)
+{
+	printf("nested\n");
+	struct Expression *s_expression = malloc(sizeof(struct Expression));
+
+	parser_remove_useless_round_brackets(expression_arr, &start, &stop);
+
+	/* Expression parsing */
+	short lowest_precedence = 100;
+	int lowest_precedence_index = 0;
+	int bracket_stack = 0;
+	for (int i = start; i <= stop; i++)
+	{	
+		if (expression_arr[i]->id == TOK_SEP_RBS)
+		{
+			bracket_stack++;
+		}
+		else if (expression_arr[i]->id == TOK_SEP_RBE)
+		{
+			bracket_stack--;
+		}
+		else if (!bracket_stack)
+		{
+			if (expression_arr[i]->type == TOK_TYPE_OP)
+			{
+				short cur_precedence = OPERATOR_PRECEDENCE[expression_arr[i]->id];
+				printf("prec %d\n", cur_precedence);
+				if (cur_precedence < lowest_precedence)
+				{
+					lowest_precedence = cur_precedence;
+					lowest_precedence_index = i;
+				}
+			}
+		}
+	}
+
+	if (lowest_precedence < 100)
+	{
+		s_expression->operator = malloc(sizeof(struct Operator));
+		s_expression->type = EXPRESSION_TYPE_OP;
+		s_expression->operator->token = expression_arr[lowest_precedence_index];
+		s_expression->operator->left
+				= parser_nested_expression(expression_arr, start, lowest_precedence_index-1);
+		s_expression->operator->right
+				= parser_nested_expression(expression_arr, lowest_precedence_index+1, stop);
+	}
+	else if (start == stop) /* only one token in the array */
+	{
+		if (expression_arr[start]->type == TOK_TYPE_LI)
+		{
+			s_expression->type = EXPRESSION_TYPE_LI;
+			s_expression->literal = expression_arr[start];
+		}
+		else if (expression_arr[start]->type == TOK_TYPE_ID)
+		{
+			s_expression->type = EXPRESSION_TYPE_ID;
+			s_expression->identifier = expression_arr[start];
+		}
+	}
+
+	return s_expression;
+}
+
+static void parser_remove_useless_round_brackets(struct TokenNode *expression[],
+												int *start,
+												int *stop)
+{
+	int lowest_inside = 0;
+	int bracket_stack = 0;
+	int min = *start;
+	int max = *stop;
+	while(expression[min]->id == TOK_SEP_RBS && expression[max]->id == TOK_SEP_RBE)
+	{
+		lowest_inside++;
+		bracket_stack++;
+		min++;
+		max--;
+	}
+
+	while(min <= max)
+	{
+		if (!lowest_inside)
+			return;
+
+		if (expression[min]->id == TOK_SEP_RBS)
+			bracket_stack++;
+		else if (expression[min]->id == TOK_SEP_RBE)
+			bracket_stack--;
+
+		if (bracket_stack < lowest_inside)
+			lowest_inside--;
+
+		min++;
+	}
+
+	*start += lowest_inside;
+	*stop -= lowest_inside;
+
+	return;
+}
+
+static int parser_is_precedent(const unsigned char op1, const unsigned char op2)
+{
+	return OPERATOR_PRECEDENCE[op1] >= OPERATOR_PRECEDENCE[op2];
 }
 
 static struct Expression *parser_expression_null()
@@ -306,8 +428,8 @@ short OPERATOR_PRECEDENCE[127] = {
 	[TOK_OP_OR]			= 8,
 	[TOK_OP_AND]		= 10,
 	[TOK_OP_XOR]		= 9,
-	[TOK_OP_ADD]		= 17,
-	[TOK_OP_SUB]		= 17,
+	[TOK_OP_ADD]		= 14,
+	[TOK_OP_SUB]		= 14,
 	[TOK_OP_BY]			= 15,
 	[TOK_OP_DIV]		= 15,
 	[TOK_OP_MOD]		= 15,

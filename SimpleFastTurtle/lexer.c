@@ -291,7 +291,7 @@ static void lexer_test(struct List *s_list_token,
 static int lexer_is_literal(const char token[])
 {
     char first_char = token[0];
-    if (first_char >= 48 && first_char <= 57)
+    if (first_char >= '0' && first_char <= '9')
         return TOK_LI_NUMBER;
     if ((first_char == 't' || first_char == 'f')
         && (!strcmp("true", token) || !strcmp("false", token)))
@@ -301,7 +301,7 @@ static int lexer_is_literal(const char token[])
 
 static int lexer_is_keyword(const char token[])
 {
-    if (token[0] < 97 && token[0] > 119)
+    if (token[0] < 'a' && token[0] > 'w')
         return 0;
 
     switch(token[0])
@@ -410,6 +410,8 @@ static int lexer_is_double_operator(const char op1, const char op2)
     {
         switch(op1)
         {
+            case TOK_OP_ASIGN:
+                return TOK_OP_EQUAL;
             case TOK_OP_ADD:
                 return TOK_OP_INCR;
             case TOK_OP_SUB:
@@ -428,8 +430,6 @@ static int lexer_is_double_operator(const char op1, const char op2)
     {
         switch(op1)
         {
-            case TOK_OP_ASIGN:
-                return TOK_OP_EQUAL;
             case TOK_OP_NOT:
                 return TOK_OP_NOT_EQUAL;
             case TOK_OP_INF:
@@ -445,18 +445,10 @@ static int lexer_is_double_operator(const char op1, const char op2)
             case TOK_OP_DIV:
                 return TOK_OP_DIV_ASIGN;
         }
+        printf("\n");
     }
     return 0;
 }
-
-#if 0
-    TOK_OP_INCR     = 1,    /* "++" */
-    TOK_OP_DECR     = 2,    /* "--" */
-    TOK_OP_EXPO     = 3,    /* "**" */
-    TOK_OP_SQRT     = 4,    /* "//" */
-    TOK_OP_LOGIC_AND= 9,    /* "&&" */
-    TOK_OP_LOGIC_OR = 10,   /* "||" */
-#endif
 
 static int lexer_is_separator(const char token)
 {

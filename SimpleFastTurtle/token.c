@@ -53,15 +53,9 @@ void token_free(void *data)
 
 
 /* ┌ ┘ └ ┐ ─ | ├ */
-
-void token_tree_fprintf(FILE *output, void *data)
+void token_tree_fprintf(FILE *output, struct List *s_tree_token)
 {
-	struct Statement *s_tree = (struct Statement*)data;
 	char ident[1000] = " ";
-	fprintf(output, " ");
-
-	fprintf(output, "%s", s_tree->token->token);
-
 	fprintf(output, "\n");
 
 	void i_apply_ident(FILE *output, void *data, char e_pos)
@@ -69,8 +63,8 @@ void token_tree_fprintf(FILE *output, void *data)
 		token_statement_fprintf(output, data, ident, e_pos);
 	}
 
-	if (s_tree->statements != NULL && s_tree->statements->size)
-		list_fprintf_pos(s_tree->statements, output, i_apply_ident);
+	if (s_tree_token->size)
+		list_fprintf_pos(s_tree_token, output, i_apply_ident);
 
 	fprintf(output, "\n");
 }
@@ -158,27 +152,56 @@ void token_expression_fprintf(FILE *output, void *data, char ident[], char e_pos
 	else
 		fprintf(output, "├─");
 
-	/* Operator */
-	//fprintf(output, "%s", s_expression->token->token);
-	fprintf(output, "Expr\n");
-	/* After : Content of the statement with updated ident */
-	int i = 0;
-	while(ident[i] != '\0')
+	token_expression_tree_fprintf(output, s_expression, ident);
+
+	//fprintf(output, "\n");
+}
+
+void token_expression_tree_fprintf(FILE *output, void *data, char ident[])
+{
+	struct Expression *s_expression = (struct Expression*)data;
+	if (s_expression->type == EXPRESSION_TYPE_ID)
 	{
-		i++;
+		fprintf(output, "%s\n", s_expression->identifier->token);
 	}
-	if (e_pos == LIST_END || e_pos == LIST_ALL)
+	else if (s_expression->type == EXPRESSION_TYPE_LI)
+	{
+		fprintf(output, "%s\n", s_expression->literal->token);
+	}
+	else if (s_expression->type == EXPRESSION_TYPE_OP)
+	{
+		fprintf(output, "%s\n", s_expression->operator->token->token);
+
+		int i = 0;
+		while(ident[i] != '\0')
+		{
+			i++;
+		}
 		ident[i] = ' ';
+		ident[i+1] = ' ';
+		ident[i+2] = '\0';
+
+
+		/* Print expressions recursively */
+
+		fprintf(output, "%s├─L ", ident);
+		/* We have to show that L is linked to R but R is then linked to nothing next */
+		ident[i+2] = '|';
+		ident[i+3] = ' ';
+		ident[i+4] = '\0';
+		token_expression_tree_fprintf(output, s_expression->operator->left, ident);
+		ident[i+2] = '\0';
+		fprintf(output, "%s└─R ", ident);
+		ident[i+2] = ' ';
+		token_expression_tree_fprintf(output, s_expression->operator->right, ident);
+
+		/* Reset ident */
+		ident[i] = '\0';
+	}
 	else
-		ident[i] = '|';
-	
-	ident[i+1] = ' ';
-
-	/* Print expressions recursively */
-
-
-	/* Reset ident */
-	ident[i] = '\0';
+	{
+		fprintf(output, "wtf");
+	}
 }
 
 /*
