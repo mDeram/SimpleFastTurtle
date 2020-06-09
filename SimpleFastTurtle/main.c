@@ -8,10 +8,12 @@
 #include "lexer.h"
 #include "parser.h"
 
+
+
 int main(int argc, char *argv[])
 {
-	struct List *s_list_token = list_new();
-	struct List *s_tree_token = list_new();
+    struct List *s_list_token = list_new();
+    struct List *s_tree_token = list_new();
 
     lexer_process(s_list_token, "main.sft", 1, 1, 1);
 

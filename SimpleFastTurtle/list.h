@@ -1,6 +1,14 @@
 #ifndef F_LIST_H
 #define F_LIST_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <stddef.h>
+
+
+
 struct List *list_new();
 void list_push(struct List *list, void *data);
 void list_fprintf(struct List *list, FILE *output, void (*callback)(FILE *, void *));
@@ -14,21 +22,21 @@ void list_free_foreach(struct List *list, void (*callback)(void *));
 
 
 struct List {
-	unsigned long int size;
-	struct ListNode *head;
-	struct ListNode *tail;
+    unsigned long int size;
+    struct ListNode *head;
+    struct ListNode *tail;
 };
 
 struct ListNode {
-	void *data;
-	struct ListNode *next;
+    void *data;
+    struct ListNode *next;
 };
 
 enum {
-	LIST_START,
-	LIST_INSIDE,
-	LIST_END,
-	LIST_ALL, /* if the list is 1 length */
+    LIST_START,
+    LIST_INSIDE,
+    LIST_END,
+    LIST_ALL, /* list length = 1 */
 };
 
 #endif
