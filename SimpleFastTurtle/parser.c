@@ -9,6 +9,11 @@
 static void save_in_file(struct List *s_tree_token, struct List *s_list_token);
 static void parse(struct List *s_tree_token, struct List *s_list_token);
 static int next_node(struct ParserNode *s_cur);
+static void remove_all_token(struct ParserNode *s_cur, char to_remove);
+static void parse_expression_block(struct ParserNode *s_cur,
+                                   struct Statement *s_statement);
+static void parse_statement_block(struct ParserNode *s_cur,
+                                  struct Statement *s_statement);
 static struct Statement *parse_statement(struct ParserNode *s_cur);
 static struct Expression *parse_expression(struct ParserNode *s_cur);
 static struct Expression *parse_nested_expression(
@@ -65,23 +70,56 @@ static int next_node(struct ParserNode *s_cur)
     printf("ID: %d\n", s_cur->token->id);
     s_cur->node = s_cur->node->next;
     if (s_cur->node == NULL)
-        return 1;
+        return 0;
 
     s_cur->token = (struct TokenNode *)s_cur->node->data;
-    return 0;
+    return 1;
+}
+
+static void remove_all_token(struct ParserNode *s_cur, char to_remove)
+{
+    while ((s_cur->token->id == to_remove) && next_node(s_cur))
+        ;
+}
+
+static void parse_expression_block(struct ParserNode *s_cur,
+                                   struct Statement *s_statement)
+{
+    while (s_cur->token->id != TOK_SEP_CBS)
+    {
+        struct Expression *new_expression = parse_expression(s_cur);
+        if (new_expression != NULL)
+            list_push(s_statement->expressions, new_expression);
+    }
+}
+
+static void parse_statement_block(struct ParserNode *s_cur,
+                                  struct Statement *s_statement)
+{
+    if (!next_node(s_cur)) /* { */
+        error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK, &s_statement->token->line);
+
+    while (s_cur->token->id != TOK_SEP_CBE)
+    {
+        struct Statement *s_new_statement = parse_statement(s_cur);
+        if (s_new_statement)
+            list_push(s_statement->statements, s_new_statement);
+    }
+
+    if (s_statement->statements->size == 0)
+        warning_printd(WARNING_PARSER_EMPTY_STATEMENT, &s_statement->token->line);
+
+    next_node(s_cur); /* } */
 }
 
 static struct Statement *parse_statement(struct ParserNode *s_cur)
 {
     printf("statement\n");
 
-    /*remove all ; before parsing the statement*/
     unsigned long int tmp_line = s_cur->token->line;
-    while (s_cur->token->id == TOK_SEP_SEMI)
-    {
-        if (next_node(s_cur)) /* ; */
-            error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &tmp_line);
-    }
+    remove_all_token(s_cur, TOK_SEP_SEMI);
+    if (s_cur->node == NULL)
+        error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &tmp_line);
 
     if (s_cur->token->id == TOK_SEP_CBE)
         return NULL;
@@ -102,35 +140,15 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
             s_statement->expressions = list_new();
             s_statement->statements = list_new();
 
-            if (next_node(s_cur)) /* for/while/if/elif */
+            if (!next_node(s_cur)) /* for/while/if/elif */
                 error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
 
-            while (s_cur->token->id != TOK_SEP_CBS)
-            {
-                list_push(s_statement->expressions,
-                            parse_expression(s_cur)); /*todo check if expression not null*/
-            }
+            parse_expression_block(s_cur, s_statement);
 
             if (s_statement->expressions->size == 0)
                 error_printd(ERROR_PARSER_INVALID_NUMBER_PARAMETERS, &s_statement->token->line);
 
-            if (next_node(s_cur)) /* { */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
-
-            while (s_cur->token->id != TOK_SEP_CBE)
-            {
-                struct Statement *s_new_statement
-                        = parse_statement(s_cur);
-                if (s_new_statement)
-                    list_push(s_statement->statements, s_new_statement);
-            }
-
-            if (s_statement->statements->size == 0)
-                warning_printd(WARNING_PARSER_EMPTY_STATEMENT, &s_statement->token->line);
-
-            if (next_node(s_cur)) /* } */
-                break;
-            //error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &s_statement->token->line);
+            parse_statement_block(s_cur, s_statement);
 
             break;
 
@@ -138,100 +156,33 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
             s_statement->expressions = list_new();
             s_statement->statements = list_new();
 
-            if (next_node(s_cur)) /* fn */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &s_statement->token->line);
+            if (!next_node(s_cur)) /* fn */
+                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
 
             s_statement->name = s_cur->token;
 
             /*todo error not identifier */
-            if (next_node(s_cur)) /* identifier (name) */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
-
-            while (s_cur->token->id != TOK_SEP_CBS)
+            if (!next_node(s_cur)) /* identifier (name) */
             {
-                list_push(s_statement->expressions,
-                            parse_expression(s_cur));
+                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
             }
 
-            if (next_node(s_cur)) /* { */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
+            parse_expression_block(s_cur, s_statement);
 
-            while (s_cur->token->id != TOK_SEP_CBE)
-            {
-                struct Statement *s_new_statement
-                        = parse_statement(s_cur);
-                if (s_new_statement)
-                    list_push(s_statement->statements, s_new_statement);
-            }
-
-            if (s_statement->statements->size == 0)
-                warning_printd(WARNING_PARSER_EMPTY_STATEMENT, &s_statement->token->line);
-
-            if (next_node(s_cur)) /* } */
-                break;
-            //error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &s_statement->token->line);
+            parse_statement_block(s_cur, s_statement);
 
             break;
-        #if 0
         case TOK_KEY_ELSE:
-            s_statement->statements = list_new();
-
-            if (next_node(p_cur_node, p_cur_token)) /* else */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
-
-            if (next_node(p_cur_node, p_cur_token)) /* { */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
-
-            while (cur_token->id != TOK_SEP_CBE)
-            {
-                struct Statement *s_new_statement
-                        = parse_statement(p_cur_node, p_cur_token, cur_node, cur_token);
-
-                if (s_new_statement)
-                    list_push(s_statement->statements, s_new_statement);
-            }
-
-            if (s_statement->statements->size == 0)
-                warning_printd(WARNING_PARSER_EMPTY_STATEMENT, &s_statement->token->line);
-
-            if (next_node(p_cur_node, p_cur_token)) /* } */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &s_statement->token->line);
-
             break;
 
         case TOK_KEY_VAR:
-            if (next_node(p_cur_node, p_cur_token)) /* var */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &s_statement->token->line);
-
-            s_statement->name = cur_token;
-
-            if (next_node(p_cur_node, p_cur_token)) /* identifier (name) */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
-
-            if (cur_token->id == TOK_OP_EQUAL)
-            {
-                if (next_node(p_cur_node, p_cur_token)) /* = */
-                    error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START,
-                                &s_statement->token->line);
-
-                s_statement->expression
-                        = parse_expression(p_cur_node, p_cur_token, cur_node, cur_token);
-            }
-            else
-            {
-                s_statement->expression = get_token_null();
-            }
-
             break;
 
         case TOK_KEY_BREAK:
-            if (next_node(p_cur_node, p_cur_token)) /* break */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &s_statement->token->line);
             break;
 
         case TOK_KEY_RETURN:
             break;
-        #endif
         }
     }
     return s_statement;
@@ -239,13 +190,10 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
 
 static struct Expression *parse_expression(struct ParserNode *s_cur)
 {
-    /*remove all ',' before parsing the statement*/
     unsigned long int tmp_line = s_cur->token->line;
-    while (s_cur->token->id == TOK_SEP_COMMA)
-    {
-        if (next_node(s_cur)) /* , */
-            error_printd(ERROR_PARSER_INVALID_EXPRESSION, &tmp_line);
-    }
+    remove_all_token(s_cur, TOK_SEP_COMMA);
+    if (s_cur->node == NULL)
+        error_printd(ERROR_PARSER_INVALID_EXPRESSION, &tmp_line);
 
     /* Count Expression size and check if there is as much opening and closing round brackets */
     int bracket_stack = 0;
@@ -263,12 +211,12 @@ static struct Expression *parse_expression(struct ParserNode *s_cur)
         else if (s_cur->token->id == TOK_SEP_RBE)
             bracket_stack--;
 
-        if (bracket_stack < 0 || next_node(s_cur))
+        if (bracket_stack < 0 || !next_node(s_cur))
             break;
     }
 
-    if (!bracket_stack)
-        ; //error invalid expression
+    if (bracket_stack)
+        error_printd(ERROR_PARSER_INVALID_EXPRESSION, &tmp_line);
 
     /* Copy the expression to an array */
     struct TokenNode **expression_arr = malloc(sizeof(struct TokenNode*)*expression_size);
@@ -287,15 +235,11 @@ static struct Expression *parse_expression(struct ParserNode *s_cur)
 }
 
 /*
- * Find a litteral or identifier
- * Then check the operator/separator at his left, and at his right
- * If there is only one OP then apply the op to him (which mean that the op nest him either at
- * his left of his right)
- * If there are 2 OP then check for the precedence between them, then nest the operation that
- * have a highest precedence with the LI/ID to the left/right of the OP with the least precedence
- *
- * Separators are being check more "manually" in the code because they come together
- * for the brackets and the behavior is different than operator
+ *  Remove all useless round brackets that are arround the nested expression
+ *  Find the operator with the lowest precedence and that is not inside brackets
+ *  If there is an operator create the Left and Right branch from that operator
+ *  If only one element, it's an end node (ID or LI)
+ *  Else it's a null node
  */
 static struct Expression *parse_nested_expression(
                                             struct TokenNode **expression_arr,

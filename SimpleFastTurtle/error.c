@@ -25,6 +25,7 @@ static const char *c_error_list[100] = {
     /*  Parser  */
     "INVALID NUMBER OF PARAMETERS IN STATEMENT - LINE : %lu", "o",
     "INVALID STATEMENT BLOCK START - LINE : %lu", "o",
+    "INVALID STATEMENT BLOCK - LINE : %lu", "o",
     "INVALID STATEMENT BLOCK END - LINE : %lu", "o",
     "INVALID EXPRESSION - LINE : %lu", "o",
 };
