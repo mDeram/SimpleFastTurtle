@@ -9,7 +9,11 @@
 #include "list.h"
 #include "token.h"
 #include "error.h"
+#include "warning.h"
 
+
+
+#define LEXER_TOKEN_LENGTH 91
 
 
 void lexer_process(struct List *s_list_token,
@@ -19,5 +23,12 @@ void lexer_process(struct List *s_list_token,
                    int option_print_size);
 
 
+
+struct LexerToken {
+    unsigned long int line;
+    unsigned char index;
+    char c;
+    char token[LEXER_TOKEN_LENGTH];
+};
 
 #endif

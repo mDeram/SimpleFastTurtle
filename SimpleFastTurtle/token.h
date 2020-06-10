@@ -165,6 +165,8 @@ enum {
     TOK_LI_NUMBER       = 97,
     TOK_LI_BOOL         = 98,
     TOK_LI_STRING       = 99,
+
+    TOK_ID              = 100,
 };
 
 #endif

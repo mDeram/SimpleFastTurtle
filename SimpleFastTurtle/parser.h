@@ -22,6 +22,13 @@ extern const short OPERATOR_ASSOCIATIVITY[127];
 
 
 
+struct ParserNode {
+    struct ListNode *node;
+    struct TokenNode *token;
+};
+
+
+
 enum {
     ASSOCIATIVITY_NA,
     ASSOCIATIVITY_LEFT_TO_RIGHT,

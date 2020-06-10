@@ -13,6 +13,8 @@ void warning_printd(int warning_id, void *data);
 
 
 enum {
+    WARNING_LEXER_COMMENT_NOT_CLOSED,
+    
     WARNING_PARSER_EMPTY_STATEMENT,
 };
 

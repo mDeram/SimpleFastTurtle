@@ -14,6 +14,10 @@ static const char *c_warning_list[100];
 
 /* o = lu */
 static const char *c_warning_list[100] = {
+    /*  Lexer   */
+    "A BLOCK COMMENT HAS NOT BEEN CLOSED", "",
+
+    /*  Parser  */
     "EMPTY STATEMENT - LINE : %lu", "o",
 };
 
