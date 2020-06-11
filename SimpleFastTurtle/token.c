@@ -21,8 +21,7 @@ struct TokenNode *token_new(const unsigned long int current_line,
                             const char *token)
 {
     struct TokenNode *node = malloc(sizeof(struct TokenNode));
-    if (node == NULL)
-        exit(EXIT_FAILURE);
+    if (node == NULL) exit(EXIT_FAILURE);
 
     node->line = current_line;
     node->type = type;
@@ -48,6 +47,40 @@ void token_free(void *data)
 }
 
 
+
+struct Statement *statement_new()
+{
+    struct Statement *s_statement = malloc(sizeof(struct Statement));
+    if (s_statement == NULL) exit(EXIT_FAILURE);
+
+    s_statement->token = NULL;
+    s_statement->expressions = list_new();
+    s_statement->statements = list_new();
+
+    return s_statement;
+}
+
+void statement_free(void *data)
+{
+    struct Statement *s_statement = (struct Statement *)data;
+    list_free_foreach(s_statement->expressions, expression_free);
+    list_free_foreach(s_statement->statements, statement_free);
+    free(s_statement);
+}
+
+struct Expression *expression_new()
+{
+    struct Expression *s_expression = malloc(sizeof(struct Expression));
+    if (s_expression == NULL) exit(EXIT_FAILURE);
+
+    return s_expression;
+}
+
+void expression_free(void *data)
+{
+    struct Expression *s_expression = (struct Expression *)data;
+    free(s_expression);
+}
 
 /* ┌ ┘ └ ┐ ─ | ├ */
 void token_tree_fprintf(FILE *output, struct List *s_tree_token)
@@ -102,13 +135,7 @@ void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos)
     ident[i+3] = ' ';
     ident[i+4] = '\0';
 
-    if (s_statement->token->id == TOK_KEY_VAR && s_statement->expression)
-    {
-        fprintf(output, "┐");
-        fprintf(output, "\n");
-        token_expression_fprintf(output, s_statement->expression, ident, e_pos);
-    }
-    else if (s_statement->expressions != NULL && s_statement->expressions->size)
+    if (s_statement->expressions != NULL && s_statement->expressions->size)
     {
         fprintf(output, "┐");
         fprintf(output, "\n");
@@ -124,7 +151,7 @@ void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos)
     }
     /* Reset big ident */
     ident[i+2] = '\0';
-
+    
     if (s_statement->statements != NULL && s_statement->statements->size)
     {
         void i_apply_ident(FILE *output, void *data, char e_pos)
@@ -149,9 +176,22 @@ void token_expression_fprintf(FILE *output, void *data, char ident[], char e_pos
     else
         fprintf(output, "├─");
 
+    int i = 0;
+    while(ident[i] != '\0')
+    {
+        i++;
+    }
+    if (e_pos == LIST_END || e_pos == LIST_ALL)
+        ident[i] = ' ';
+    else
+        ident[i] = '|';
+    
+    ident[i+1] = ' ';
+    ident[i+2] = '\0';
+
     token_expression_tree_fprintf(output, s_expression, ident);
 
-    //fprintf(output, "\n");
+    ident[i] = '\0';
 }
 
 void token_expression_tree_fprintf(FILE *output, void *data, char ident[])
@@ -174,22 +214,18 @@ void token_expression_tree_fprintf(FILE *output, void *data, char ident[])
         {
             i++;
         }
-        ident[i] = ' ';
-        ident[i+1] = ' ';
-        ident[i+2] = '\0';
-
 
         /* Print expressions recursively */
 
         fprintf(output, "%s├─L ", ident);
         /* We have to show that L is linked to R but R is then linked to nothing next */
-        ident[i+2] = '|';
-        ident[i+3] = ' ';
-        ident[i+4] = '\0';
-        token_expression_tree_fprintf(output, s_expression->operator->left, ident);
+        ident[i] = '|';
+        ident[i+1] = ' ';
         ident[i+2] = '\0';
+        token_expression_tree_fprintf(output, s_expression->operator->left, ident);
+        ident[i] = '\0';
         fprintf(output, "%s└─R ", ident);
-        ident[i+2] = ' ';
+        ident[i] = ' ';
         token_expression_tree_fprintf(output, s_expression->operator->right, ident);
 
         /* Reset ident */

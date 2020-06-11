@@ -18,6 +18,12 @@ struct TokenNode *token_new(const unsigned long int current_line,
                             const char *token);
 void token_free(void *data);
 
+struct Statement *statement_new();
+void statement_free(void *data);
+
+struct Expression *expression_new();
+void expression_free(void *data);
+
 void token_tree_fprintf(FILE *output, struct List *s_tree_token);
 void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos);
 void token_expression_fprintf(FILE *output, void *data, char ident[], char e_pos);
@@ -40,14 +46,8 @@ struct TokenNode {
 
 struct Statement {
     struct TokenNode *token;
-    struct TokenNode *name;
-    union {
-        struct Expression *expression;
-        struct {
-            struct List *expressions;
-            struct List *statements;
-        };
-    };
+    struct List *expressions;
+    struct List *statements;
 };
 
 struct Expression {

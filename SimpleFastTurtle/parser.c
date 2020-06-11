@@ -14,6 +14,12 @@ static void parse_expression_block(struct ParserNode *s_cur,
                                    struct Statement *s_statement);
 static void parse_statement_block(struct ParserNode *s_cur,
                                   struct Statement *s_statement);
+static void statement_inline(struct ParserNode *s_cur,
+                             struct Statement *s_statement);
+static void statement_block(struct ParserNode *s_cur,
+                            struct Statement *s_statement);
+static void statement_start(struct ParserNode *s_cur,
+                                  struct Statement *s_statement);
 static struct Statement *parse_statement(struct ParserNode *s_cur);
 static struct Expression *parse_expression(struct ParserNode *s_cur);
 static struct Expression *parse_nested_expression(
@@ -85,7 +91,11 @@ static void remove_all_token(struct ParserNode *s_cur, char to_remove)
 static void parse_expression_block(struct ParserNode *s_cur,
                                    struct Statement *s_statement)
 {
-    while (s_cur->token->id != TOK_SEP_CBS)
+    struct Expression *new_expression = parse_expression(s_cur);
+    if (new_expression != NULL)
+        list_push(s_statement->expressions, new_expression);
+
+    while (s_cur->token->id == TOK_SEP_COMMA)
     {
         struct Expression *new_expression = parse_expression(s_cur);
         if (new_expression != NULL)
@@ -94,22 +104,56 @@ static void parse_expression_block(struct ParserNode *s_cur,
 }
 
 static void parse_statement_block(struct ParserNode *s_cur,
+                            struct Statement *s_statement)
+{
+    if (s_cur->token->id != TOK_SEP_CBS)
+    {
+        statement_inline(s_cur, s_statement);
+    }
+    else
+    {
+        statement_block(s_cur, s_statement);
+    }
+}
+
+static void statement_inline(struct ParserNode *s_cur,
+                                   struct Statement *s_statement)
+{
+    struct Statement *s_new_statement = parse_statement(s_cur);
+    if (s_new_statement != NULL)
+        list_push(s_statement->statements, s_new_statement);
+
+    remove_all_token(s_cur, TOK_SEP_SEMI);
+}
+
+static void statement_block(struct ParserNode *s_cur,
                                   struct Statement *s_statement)
 {
     if (!next_node(s_cur)) /* { */
-        error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK, &s_statement->token->line);
+    {
+        error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK,
+                     &s_statement->token->line);
+    }
 
     while (s_cur->token->id != TOK_SEP_CBE)
     {
         struct Statement *s_new_statement = parse_statement(s_cur);
-        if (s_new_statement)
+        if (s_new_statement != NULL)
             list_push(s_statement->statements, s_new_statement);
     }
 
-    if (s_statement->statements->size == 0)
-        warning_printd(WARNING_PARSER_EMPTY_STATEMENT, &s_statement->token->line);
-
     next_node(s_cur); /* } */
+}
+
+static void statement_start(struct ParserNode *s_cur,
+                            struct Statement *s_statement)
+{
+    s_statement->token = s_cur->token;
+    if (!next_node(s_cur))
+    {
+        error_printd(ERROR_PARSER_INVALID_STATEMENT_START,
+                     &s_statement->token->line);
+    }
 }
 
 static struct Statement *parse_statement(struct ParserNode *s_cur)
@@ -118,16 +162,13 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
 
     unsigned long int tmp_line = s_cur->token->line;
     remove_all_token(s_cur, TOK_SEP_SEMI);
-    if (s_cur->node == NULL)
+    if (s_cur->node == NULL) //todo
         error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &tmp_line);
 
     if (s_cur->token->id == TOK_SEP_CBE)
         return NULL;
 
-    /*parse the statement recursively*/
-    struct Statement *s_statement = malloc(sizeof(struct Statement));
-    s_statement->token = s_cur->token;
-    s_statement->name = NULL;
+    struct Statement *s_statement = statement_new();
 
     if (s_cur->token->type == TOK_TYPE_KEY)
     {
@@ -137,51 +178,49 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
         case TOK_KEY_WHILE:
         case TOK_KEY_IF:
         case TOK_KEY_ELIF:
-            s_statement->expressions = list_new();
-            s_statement->statements = list_new();
-
-            if (!next_node(s_cur)) /* for/while/if/elif */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
-
+            statement_start(s_cur, s_statement);
             parse_expression_block(s_cur, s_statement);
 
             if (s_statement->expressions->size == 0)
-                error_printd(ERROR_PARSER_INVALID_NUMBER_PARAMETERS, &s_statement->token->line);
-
-            parse_statement_block(s_cur, s_statement);
-
-            break;
-
-        case TOK_KEY_FN:
-            s_statement->expressions = list_new();
-            s_statement->statements = list_new();
-
-            if (!next_node(s_cur)) /* fn */
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
-
-            s_statement->name = s_cur->token;
-
-            /*todo error not identifier */
-            if (!next_node(s_cur)) /* identifier (name) */
             {
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_START, &s_statement->token->line);
+                error_printd(ERROR_PARSER_INVALID_NUMBER_PARAMETERS,
+                             &s_statement->token->line);
             }
 
-            parse_expression_block(s_cur, s_statement);
-
             parse_statement_block(s_cur, s_statement);
+            break;
+        case TOK_KEY_FN:
+            statement_start(s_cur, s_statement);
 
+            if (s_cur->token->type != TOK_TYPE_ID)
+            {
+                error_printd(ERROR_PARSER_INVALID_STATEMENT_START,
+                             &s_statement->token->line);
+            }
+            statement_start(s_cur, s_statement);
+
+            parse_expression_block(s_cur, s_statement);
+            parse_statement_block(s_cur, s_statement);
             break;
         case TOK_KEY_ELSE:
+            statement_start(s_cur, s_statement);
+            parse_statement_block(s_cur, s_statement);
             break;
-
         case TOK_KEY_VAR:
-            break;
+            statement_start(s_cur, s_statement);
+            parse_expression_block(s_cur, s_statement);
 
+            if (s_statement->expressions->size == 0)
+            {
+                error_printd(ERROR_PARSER_INVALID_VAR_ASSIGNMENT,
+                             &s_statement->token->line);
+            }
+            break;
         case TOK_KEY_BREAK:
+            statement_start(s_cur, s_statement);
             break;
-
         case TOK_KEY_RETURN:
+            statement_start(s_cur, s_statement);
             break;
         }
     }
@@ -200,9 +239,14 @@ static struct Expression *parse_expression(struct ParserNode *s_cur)
     unsigned int expression_size = 0;
     struct ListNode *copy_node = s_cur->node;
 
-    while (s_cur->token->id != TOK_SEP_CBS
-        && s_cur->token->id != TOK_SEP_SEMI
-        && s_cur->token->id != TOK_SEP_COMMA)
+    while (s_cur->token->type == TOK_TYPE_ID
+        || s_cur->token->type == TOK_TYPE_LI
+        || s_cur->token->type == TOK_TYPE_OP
+        || s_cur->token->id   == TOK_SEP_RBS
+        || s_cur->token->id   == TOK_SEP_RBE
+        || s_cur->token->id   == TOK_SEP_SBS
+        || s_cur->token->id   == TOK_SEP_SBE
+        || s_cur->token->id   == TOK_SEP_DOT)
     {
         expression_size++;
 
@@ -245,7 +289,7 @@ static struct Expression *parse_nested_expression(
                                             struct TokenNode **expression_arr,
                                             int start, int stop)
 {
-    struct Expression *s_expression = malloc(sizeof(struct Expression));
+    struct Expression *s_expression = expression_new();
 
     remove_useless_rb(expression_arr, &start, &stop);
 
