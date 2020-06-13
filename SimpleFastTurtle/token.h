@@ -56,7 +56,13 @@ struct Expression {
         struct Operator *operator;
         struct TokenNode *identifier;
         struct TokenNode *literal;
+        struct Function *function;
     };
+};
+
+struct Function {
+    struct TokenNode *name;
+    struct List *params;
 };
 
 struct Operator {

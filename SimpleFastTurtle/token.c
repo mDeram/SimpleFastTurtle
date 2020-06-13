@@ -111,7 +111,10 @@ void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos)
         fprintf(output, "├─");
 
     /* Token */
-    fprintf(output, "%s", s_statement->token->token);
+    if (s_statement->token == NULL)
+        fprintf(output, "%s", "expr");
+    else
+        fprintf(output, "%s", s_statement->token->token);
 
     /* After : Content of the statement with updated ident */
     int i = 0;

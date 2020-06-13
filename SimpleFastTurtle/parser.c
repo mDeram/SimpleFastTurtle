@@ -21,10 +21,16 @@ static void statement_block(struct ParserNode *s_cur,
 static void statement_start(struct ParserNode *s_cur,
                                   struct Statement *s_statement);
 static struct Statement *parse_statement(struct ParserNode *s_cur);
+static int is_token_valid_in_expression(struct TokenNode *token,
+                                        int bracket_stack);
+static int expression_can_token_follow(struct TokenNode *last2,
+                                       struct TokenNode *last,
+                                       struct TokenNode *cur);
 static struct Expression *parse_expression(struct ParserNode *s_cur);
 static struct Expression *parse_nested_expression(
                                             struct TokenNode **expression_arr,
                                             int start, int stop);
+static int is_function(struct TokenNode **expression_arr, int start, int stop);
 static void remove_useless_rb(struct TokenNode **expression_arr,
                               int *start, int *stop);
 static struct TokenNode *get_token_null();
@@ -224,7 +230,65 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
             break;
         }
     }
+    else if (is_token_valid_in_expression(s_cur->token, 1))
+    {
+        s_statement->token = NULL;
+        parse_expression_block(s_cur, s_statement);
+    }
+    else
+    {
+        error_printd(ERROR_PARSER_INVALID_STATEMENT, &s_statement->token->line);
+    }
     return s_statement;
+}
+
+static int is_token_valid_in_expression(struct TokenNode *token,
+                                        int bracket_stack)
+{
+    if (token->id == TOK_SEP_COMMA)
+        return bracket_stack;
+
+    return (token->type == TOK_TYPE_ID
+         || token->type == TOK_TYPE_LI
+         || token->type == TOK_TYPE_OP
+         || token->id   == TOK_SEP_RBS
+         || token->id   == TOK_SEP_RBE
+         || token->id   == TOK_SEP_SBS
+         || token->id   == TOK_SEP_SBE
+         || token->id   == TOK_SEP_DOT
+         || token->id   == TOK_KEY_NULL);
+}
+
+static int expression_can_token_follow(struct TokenNode *last2,
+                                       struct TokenNode *last,
+                                       struct TokenNode *cur)
+{
+    if (last == NULL)
+        return 1;
+
+    int is_last_id_li = last->type == TOK_TYPE_ID || last->type == TOK_TYPE_LI;
+    int is_cur_id_li = cur->type == TOK_TYPE_ID || cur->type == TOK_TYPE_LI;
+
+    if (is_last_id_li && is_cur_id_li)
+        return 0;
+
+    if (last2 == NULL)
+        return 1;
+
+    if (last->id == TOK_OP_INCR || last->id == TOK_OP_DECR)
+    {
+        return !(
+                    (cur->type == TOK_TYPE_ID
+                  || cur->type == TOK_TYPE_LI
+                  || cur->type == TOK_TYPE_KEY)
+                &&
+                    (last2->type == TOK_TYPE_ID
+                  || last2->type == TOK_TYPE_LI
+                  || last2->type == TOK_TYPE_KEY)
+                );
+    }
+
+    return 1;
 }
 
 static struct Expression *parse_expression(struct ParserNode *s_cur)
@@ -238,15 +302,11 @@ static struct Expression *parse_expression(struct ParserNode *s_cur)
     int bracket_stack = 0;
     unsigned int expression_size = 0;
     struct ListNode *copy_node = s_cur->node;
+    struct TokenNode *last2 = NULL;
+    struct TokenNode *last = NULL;
 
-    while (s_cur->token->type == TOK_TYPE_ID
-        || s_cur->token->type == TOK_TYPE_LI
-        || s_cur->token->type == TOK_TYPE_OP
-        || s_cur->token->id   == TOK_SEP_RBS
-        || s_cur->token->id   == TOK_SEP_RBE
-        || s_cur->token->id   == TOK_SEP_SBS
-        || s_cur->token->id   == TOK_SEP_SBE
-        || s_cur->token->id   == TOK_SEP_DOT)
+    while (is_token_valid_in_expression(s_cur->token, bracket_stack)
+        && expression_can_token_follow(last2, last, s_cur->token))
     {
         expression_size++;
 
@@ -255,6 +315,8 @@ static struct Expression *parse_expression(struct ParserNode *s_cur)
         else if (s_cur->token->id == TOK_SEP_RBE)
             bracket_stack--;
 
+        last2 = last;
+        last = s_cur->token;
         if (bracket_stack < 0 || !next_node(s_cur))
             break;
     }
@@ -268,8 +330,10 @@ static struct Expression *parse_expression(struct ParserNode *s_cur)
     for (int i = 0; i < expression_size; i++)
     {
         expression_arr[i] = (struct TokenNode*)copy_node->data;
+        printf("%s", expression_arr[i]->token);
         copy_node = copy_node->next;
     }
+    printf("\n");
 
     struct Expression *s_expression
             = parse_nested_expression(expression_arr, 0, expression_size-1);
@@ -343,8 +407,14 @@ static struct Expression *parse_nested_expression(
         }
         else
         {
-            printf("error parse_nested_expression not possible\n");
+            error_printd(ERROR_PARSER_INVALID_EXPRESSION,
+                         &expression_arr[start]->line);
         }
+    }
+    else if (is_function(expression_arr, start, stop))
+    {
+        printf("function\n");
+        exit(EXIT_FAILURE);
     }
     else
     {
@@ -353,6 +423,16 @@ static struct Expression *parse_nested_expression(
     }
 
     return s_expression;
+}
+
+static int is_function(struct TokenNode **expression_arr, int start, int stop)
+{
+    if ((stop - start + 1) < 3)
+        return 0;
+
+    return expression_arr[start]->type == TOK_TYPE_ID
+        && expression_arr[start+1]->id == TOK_SEP_RBS
+        && expression_arr[stop]->id    == TOK_SEP_RBE;
 }
 
 static void remove_useless_rb(struct TokenNode *expression[],
