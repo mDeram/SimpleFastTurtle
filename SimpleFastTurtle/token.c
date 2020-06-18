@@ -82,6 +82,24 @@ void expression_free(void *data)
     free(s_expression);
 }
 
+struct Function *function_new()
+{
+    struct Function *s_function = malloc(sizeof(struct Function));
+    if (s_function == NULL) exit(EXIT_FAILURE);
+
+    s_function->name = NULL;
+    s_function->params = list_new();
+
+    return s_function;
+}
+
+void function_free(void *data)
+{
+    struct Function *s_function = (struct Function *)data;
+    list_free_foreach(s_function->params, function_free);
+    free(s_function);
+}
+
 /* ┌ ┘ └ ┐ ─ | ├ */
 void token_tree_fprintf(FILE *output, struct List *s_tree_token)
 {
@@ -231,6 +249,31 @@ void token_expression_tree_fprintf(FILE *output, void *data, char ident[])
         ident[i] = ' ';
         token_expression_tree_fprintf(output, s_expression->operator->right, ident);
 
+        /* Reset ident */
+        ident[i] = '\0';
+    }
+    else if (s_expression->type == EXPRESSION_TYPE_FN)
+    {
+        fprintf(output, "%s\n", s_expression->function->name->token);
+
+        int i = 0;
+        while(ident[i] != '\0')
+        {
+            i++;
+        }
+
+        /* Print params as expressions */
+
+        fprintf(output, "%s└", ident);
+        fprintf(output, "┐");
+        fprintf(output, "\n");
+        ident[i] = ' ';
+        ident[i+1] = '\0';
+        void i_apply_ident(FILE *output, void *data, char e_pos)
+        {
+            token_expression_fprintf(output, data, ident, e_pos);
+        }
+        list_fprintf_pos(s_expression->function->params, output, i_apply_ident);
         /* Reset ident */
         ident[i] = '\0';
     }
