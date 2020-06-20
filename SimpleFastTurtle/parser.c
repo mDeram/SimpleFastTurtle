@@ -45,6 +45,7 @@ static struct TokenNode *get_token_null();
 
 
 static const short OPERATOR_PRECEDENCE[127];
+static struct TokenNode *token_null;
 
 
 
@@ -53,6 +54,8 @@ void parser_process(struct List *s_tree_token,
                     int option_save,
                     int option_print_tree)
 {
+    token_null = token_new(0, TOK_TYPE_KEY, TOK_KEY_NULL, "null");
+    
     parse(s_tree_token, s_list_token);
 
     /*OPTIONS*/
@@ -97,6 +100,9 @@ static int next_node(struct ParserNode *s_cur)
 
 static void remove_all_token(struct ParserNode *s_cur, char to_remove)
 {
+    if (s_cur->node == NULL)
+        return;
+
     while ((s_cur->token->id == to_remove) && next_node(s_cur))
         ;
 }
@@ -130,17 +136,22 @@ static void parse_statement_block(struct ParserNode *s_cur,
 }
 
 static void statement_inline(struct ParserNode *s_cur,
-                                   struct Statement *s_statement)
+                             struct Statement *s_statement)
 {
-    struct Statement *s_new_statement = parse_statement(s_cur);
-    if (s_new_statement != NULL)
-        list_push(s_statement->statements, s_new_statement);
-
-    remove_all_token(s_cur, TOK_SEP_SEMI);
+    if (s_cur->token->id == TOK_SEP_SEMI)
+    {
+        next_node(s_cur);
+    }
+    else
+    {
+        struct Statement *s_new_statement = parse_statement(s_cur);
+        if (s_new_statement != NULL)
+            list_push(s_statement->statements, s_new_statement);
+    }
 }
 
 static void statement_block(struct ParserNode *s_cur,
-                                  struct Statement *s_statement)
+                            struct Statement *s_statement)
 {
     if (!next_node(s_cur)) /* { */
     {
@@ -151,6 +162,12 @@ static void statement_block(struct ParserNode *s_cur,
     while (s_cur->token->id != TOK_SEP_CBE)
     {
         struct Statement *s_new_statement = parse_statement(s_cur);
+        if (s_cur->node == NULL)
+        {
+            error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END,
+                         &s_statement->token->line);
+        }
+
         if (s_new_statement != NULL)
             list_push(s_statement->statements, s_new_statement);
     }
@@ -173,12 +190,9 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
 {
     printf("statement\n");
 
-    unsigned long int tmp_line = s_cur->token->line;
     remove_all_token(s_cur, TOK_SEP_SEMI);
-    if (s_cur->node == NULL) //todo
-        error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &tmp_line);
 
-    if (s_cur->token->id == TOK_SEP_CBE)
+    if (s_cur->node == NULL || s_cur->token->id == TOK_SEP_CBE)
         return NULL;
 
     struct Statement *s_statement = statement_new();
@@ -234,6 +248,7 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
             break;
         case TOK_KEY_RETURN:
             statement_start(s_cur, s_statement);
+            parse_expression_block(s_cur, s_statement->expressions);
             break;
         }
     }
@@ -330,6 +345,8 @@ static struct TokenNode **expression_to_array(struct ListNode *copy_node,
                                               unsigned int size)
 {
     struct TokenNode **expression_arr = malloc(sizeof(struct TokenNode*)*size);
+    if (expression_arr == NULL) exit(EXIT_FAILURE);
+
     printf("Expression : ");
     for (int i = 0; i < size; i++)
     {
@@ -407,12 +424,32 @@ static struct Expression *parse_nested_expression(
     if (lowest_precedence < 100)
     {
         s_expression->type = EXPRESSION_TYPE_OP;
-        s_expression->operator = malloc(sizeof(struct Operator));
+        s_expression->operator = operator_new();
         s_expression->operator->token = expression_arr[lowest_precedence_index];
-        s_expression->operator->left
-                = parse_nested_expression(expression_arr, start, lowest_precedence_index-1);
-        s_expression->operator->right
-                = parse_nested_expression(expression_arr, lowest_precedence_index+1, stop);
+
+        if (lowest_precedence_index-1 < start)
+        {
+            s_expression->operator->left = expression_new();
+            s_expression->operator->left->type = EXPRESSION_TYPE_LI;
+            s_expression->operator->left->identifier = get_token_null();
+        }
+        else
+        {
+            s_expression->operator->left
+                    = parse_nested_expression(expression_arr, start, lowest_precedence_index-1);
+        }
+
+        if (lowest_precedence_index+1 > stop)
+        {
+            s_expression->operator->right = expression_new();
+            s_expression->operator->right->type = EXPRESSION_TYPE_LI;
+            s_expression->operator->right->identifier = get_token_null();
+        }
+        else
+        {
+            s_expression->operator->right
+                    = parse_nested_expression(expression_arr, lowest_precedence_index+1, stop);
+        }
     }
     else if (start == stop) /* only one token in the array */
     {
@@ -535,7 +572,7 @@ static void remove_useless_rb(struct TokenNode *expression[],
 static struct TokenNode *get_token_null()
 {
     //File line start at one so using 0 show that the parser added it to the code
-    return token_new(0, TOK_TYPE_KEY, TOK_KEY_NULL, "null");
+    return token_null;
 }
 
 

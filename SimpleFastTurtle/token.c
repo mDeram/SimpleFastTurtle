@@ -79,7 +79,31 @@ struct Expression *expression_new()
 void expression_free(void *data)
 {
     struct Expression *s_expression = (struct Expression *)data;
+    if (s_expression->type == EXPRESSION_TYPE_OP)
+        operator_free(s_expression->operator);
+    else if (s_expression->type == EXPRESSION_TYPE_FN)
+        function_free(s_expression->function);
     free(s_expression);
+}
+
+struct Operator *operator_new()
+{
+    struct Operator *s_operator = malloc(sizeof(struct Operator));
+    if (s_operator == NULL) exit(EXIT_FAILURE);
+
+    s_operator->token = NULL;
+    s_operator->left = NULL;
+    s_operator->right = NULL;
+
+    return s_operator;
+}
+
+void operator_free(void *data)
+{
+    struct Operator *s_operator = (struct Operator *)data;
+    expression_free(s_operator->left);
+    expression_free(s_operator->right);
+    free(s_operator);
 }
 
 struct Function *function_new()
@@ -96,7 +120,7 @@ struct Function *function_new()
 void function_free(void *data)
 {
     struct Function *s_function = (struct Function *)data;
-    list_free_foreach(s_function->params, function_free);
+    list_free_foreach(s_function->params, expression_free);
     free(s_function);
 }
 
@@ -282,10 +306,3 @@ void token_expression_tree_fprintf(FILE *output, void *data, char ident[])
         fprintf(output, "Invalid\n");
     }
 }
-
-#if 0
-void token_s_statement_free(void *data)
-{
-    /* Warning: free should also check for null expressions to free inside the tree */
-}
-#endif

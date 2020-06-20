@@ -24,6 +24,9 @@ void statement_free(void *data);
 struct Expression *expression_new();
 void expression_free(void *data);
 
+struct Operator *operator_new();
+void operator_free(void *data);
+
 struct Function *function_new();
 void function_free(void *data);
 
@@ -31,10 +34,6 @@ void token_tree_fprintf(FILE *output, struct List *s_tree_token);
 void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos);
 void token_expression_fprintf(FILE *output, void *data, char ident[], char e_pos);
 void token_expression_tree_fprintf(FILE *output, void *data, char ident[]);
-#if 0
-void token_tree_clear(struct TokenTree *tree);
-void token_tree_delete(struct TokenTree *tree);
-#endif
 
 
 
