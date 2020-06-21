@@ -21,6 +21,7 @@ void lexer_process(struct List *s_list_token,
                    int option_save,
                    int option_print_tokens,
                    int option_print_size);
+void lexer_free(struct List *s_list_token);
 
 
 

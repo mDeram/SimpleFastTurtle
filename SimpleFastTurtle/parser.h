@@ -15,6 +15,7 @@ void parser_process(struct List *s_tree_token,
                     struct List *s_list_token,
                     int option_save,
                     int option_print_tree);
+void parser_free(struct List *s_tree_token);
 
 
 

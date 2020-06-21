@@ -30,6 +30,9 @@ void operator_free(void *data);
 struct Function *function_new();
 void function_free(void *data);
 
+struct Array *array_new();
+void array_free(void *data);
+
 void token_tree_fprintf(FILE *output, struct List *s_tree_token);
 void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos);
 void token_expression_fprintf(FILE *output, void *data, char ident[], char e_pos);
@@ -59,12 +62,8 @@ struct Expression {
         struct TokenNode *identifier;
         struct TokenNode *literal;
         struct Function *function;
+        struct Array *array;
     };
-};
-
-struct Function {
-    struct TokenNode *name;
-    struct List *params;
 };
 
 struct Operator {
@@ -73,11 +72,22 @@ struct Operator {
     struct Expression *right;
 };
 
+struct Function {
+    struct TokenNode *identifier;
+    struct List *params;
+};
+
+struct Array {
+    struct TokenNode *identifier;
+    struct Expression *param;
+};
+
 enum {
     EXPRESSION_TYPE_OP,
     EXPRESSION_TYPE_ID,
     EXPRESSION_TYPE_LI,
-    EXPRESSION_TYPE_FN
+    EXPRESSION_TYPE_FN,
+    EXPRESSION_TYPE_ARRAY
 };
 
 

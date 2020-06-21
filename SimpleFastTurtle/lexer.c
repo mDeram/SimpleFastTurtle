@@ -45,6 +45,11 @@ void lexer_process(struct List *s_list_token,
                 option_print_tokens, option_print_size);
 }
 
+void lexer_free(struct List *s_list_token)
+{
+    list_free_foreach(s_list_token, token_free);
+}
+
 static void handle_args(struct List *s_list_token, int option_save,
                         int option_print_tokens, int option_print_size)
 {
@@ -198,6 +203,7 @@ static int handle_strings(FILE *f, struct List *s_list_token,
         {
             size *= 2;
             str = realloc(str, sizeof(char)*size);
+            if (str == NULL) exit(EXIT_FAILURE);
         }
     }
 

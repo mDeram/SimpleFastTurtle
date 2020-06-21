@@ -26,8 +26,9 @@ static int is_token_valid_in_expression(struct TokenNode *token,
 static int expression_can_token_follow(struct TokenNode *last2,
                                        struct TokenNode *last,
                                        struct TokenNode *cur);
+static short bracket_end_to_start(short bracket);
 static int expression_size_validity(struct ParserNode *s_cur,
-                                    unsigned int *size);
+                                    unsigned int *p_size);
 static struct TokenNode **expression_to_array(struct ListNode *copy_node,
                                               unsigned int size);
 static struct Expression *parse_expression(struct ParserNode *s_cur);
@@ -38,6 +39,7 @@ static void parse_function_params(struct List *params,
                              struct TokenNode **expression_arr,
                              int start, int stop);
 static int is_function(struct TokenNode **expression_arr, int start, int stop);
+static int is_array(struct TokenNode **expression_arr, int start, int stop);
 static void remove_useless_rb(struct TokenNode **expression_arr,
                               int *start, int *stop);
 static struct TokenNode *get_token_null();
@@ -55,21 +57,33 @@ void parser_process(struct List *s_tree_token,
                     int option_print_tree)
 {
     token_null = token_new(0, TOK_TYPE_KEY, TOK_KEY_NULL, "null");
-    
+
     parse(s_tree_token, s_list_token);
 
     /*OPTIONS*/
     if (option_save)
         save_in_file(s_tree_token, s_list_token);
 
-
     if (option_print_tree)
         token_tree_fprintf(stdout, s_tree_token);
 }
 
+void parser_free(struct List *s_tree_token)
+{
+    list_free_foreach(s_tree_token, statement_free);
+    token_free(token_null);
+}
+
 static void save_in_file(struct List *s_tree_token, struct List *s_list_token)
 {
+    FILE *output = NULL;
+    output = fopen("parser.p", "w+");
+    if (output == NULL)
+        error_print(ERROR_PARSER_FILE_OUTPUT_FAILURE);
 
+    token_tree_fprintf(output, s_tree_token);
+
+    fclose(output);
 }
 
 static void parse(struct List *s_tree_token, struct List *s_list_token)
@@ -89,7 +103,7 @@ static void parse(struct List *s_tree_token, struct List *s_list_token)
 
 static int next_node(struct ParserNode *s_cur)
 {
-    printf("ID: %d\n", s_cur->token->id);
+    /*printf("ID: %d\n", s_cur->token->id);*/
     s_cur->node = s_cur->node->next;
     if (s_cur->node == NULL)
         return 0;
@@ -188,8 +202,6 @@ static void statement_start(struct ParserNode *s_cur,
 
 static struct Statement *parse_statement(struct ParserNode *s_cur)
 {
-    printf("statement\n");
-
     remove_all_token(s_cur, TOK_SEP_SEMI);
 
     if (s_cur->node == NULL || s_cur->token->id == TOK_SEP_CBE)
@@ -313,32 +325,67 @@ static int expression_can_token_follow(struct TokenNode *last2,
     return 1;
 }
 
+static short bracket_end_to_start(short bracket)
+{
+    switch(bracket)
+    {
+    case TOK_SEP_RBE:
+        return TOK_SEP_RBS;
+    case TOK_SEP_SBE:
+        return TOK_SEP_SBS;
+    default:
+        return 0;
+    }
+}
+
 static int expression_size_validity(struct ParserNode *s_cur,
-                                    unsigned int *size)
+                                    unsigned int *p_size)
 {
     /*
      * Count Expression size
-     * check if there is as much opening and closing round brackets
+     * Check if there is as much opening and closing RB && SB
+     * in a valid order
      */
-    int bracket_stack = 0;
+    size_t index = 0;
+    size_t size = 16; /*If 16 is to small, size *= 2*/
+    short *bracket_stack = malloc(sizeof(short)*size);
+
     struct TokenNode *last2 = NULL;
     struct TokenNode *last = NULL;
-    while (is_token_valid_in_expression(s_cur->token, bracket_stack)
+    while (is_token_valid_in_expression(s_cur->token, index)
         && expression_can_token_follow(last2, last, s_cur->token))
     {
-        (*size)++;
+        (*p_size)++;
 
-        if (s_cur->token->id == TOK_SEP_RBS)
-            bracket_stack++;
-        else if (s_cur->token->id == TOK_SEP_RBE)
-            bracket_stack--;
+        if (s_cur->token->id == TOK_SEP_RBS || s_cur->token->id == TOK_SEP_SBS)
+        {
+            index++;
+            bracket_stack[index] = s_cur->token->id;
+        }
+        else if (s_cur->token->id == TOK_SEP_RBE || s_cur->token->id == TOK_SEP_SBE)
+        {
+            if (index == 0)
+                return -1;
+            if (bracket_stack[index] != bracket_end_to_start(s_cur->token->id))
+                return -1;
+            index--;
+        }
 
         last2 = last;
         last = s_cur->token;
-        if (bracket_stack < 0 || !next_node(s_cur))
+        if (!next_node(s_cur))
             break;
+
+        if (index == size-1)
+        {
+            size *= 2;
+            bracket_stack = realloc(bracket_stack, sizeof(short)*size);
+            if (bracket_stack == NULL) exit(EXIT_FAILURE);
+        }
     }
-    return bracket_stack;
+
+    free(bracket_stack);
+    return index;
 }
 
 static struct TokenNode **expression_to_array(struct ListNode *copy_node,
@@ -347,14 +394,12 @@ static struct TokenNode **expression_to_array(struct ListNode *copy_node,
     struct TokenNode **expression_arr = malloc(sizeof(struct TokenNode*)*size);
     if (expression_arr == NULL) exit(EXIT_FAILURE);
 
-    printf("Expression : ");
     for (int i = 0; i < size; i++)
     {
         expression_arr[i] = (struct TokenNode*)copy_node->data;
-        printf("%s", expression_arr[i]->token);
         copy_node = copy_node->next;
     }
-    printf("\n");
+
     return expression_arr;
 }
 
@@ -402,11 +447,11 @@ static struct Expression *parse_nested_expression(
     int bracket_stack = 0;
     for (int i = start; i <= stop; i++)
     {
-        if (expression_arr[i]->id == TOK_SEP_RBS)
+        if (expression_arr[i]->id == TOK_SEP_RBS || expression_arr[i]->id == TOK_SEP_SBS)
         {
             bracket_stack++;
         }
-        else if (expression_arr[i]->id == TOK_SEP_RBE)
+        else if (expression_arr[i]->id == TOK_SEP_RBE || expression_arr[i]->id == TOK_SEP_SBE)
         {
             bracket_stack--;
         }
@@ -474,9 +519,17 @@ static struct Expression *parse_nested_expression(
     {
         s_expression->type = EXPRESSION_TYPE_FN;
         s_expression->function = function_new();
-        s_expression->function->name = expression_arr[start];
+        s_expression->function->identifier = expression_arr[start];
         parse_function_params(s_expression->function->params,
                               expression_arr, start+2, stop-1);
+    }
+    else if (is_array(expression_arr, start, stop))
+    {
+        s_expression->type = EXPRESSION_TYPE_ARRAY;
+        s_expression->array = array_new();
+        s_expression->array->identifier = expression_arr[start];
+        s_expression->array->param
+                = parse_nested_expression(expression_arr, start+2, stop-1);
     }
     else
     {
@@ -529,6 +582,16 @@ static int is_function(struct TokenNode **expression_arr, int start, int stop)
     return expression_arr[start]->type == TOK_TYPE_ID
         && expression_arr[start+1]->id == TOK_SEP_RBS
         && expression_arr[stop]->id    == TOK_SEP_RBE;
+}
+
+static int is_array(struct TokenNode **expression_arr, int start, int stop)
+{
+    if ((stop - start + 1) < 3)
+        return 0;
+
+    return expression_arr[start]->type == TOK_TYPE_ID
+        && expression_arr[start+1]->id == TOK_SEP_SBS
+        && expression_arr[stop]->id    == TOK_SEP_SBE;
 }
 
 static void remove_useless_rb(struct TokenNode *expression[],

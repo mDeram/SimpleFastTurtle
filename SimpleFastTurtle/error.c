@@ -18,11 +18,12 @@ static const char *c_error_list[100];
 static const char *c_error_list[100] = {
     /*  Lexer   */
     "FILE \"%s\" NOT FOUND FOUND", "s",
-    "FAILED TO OPEN \"lexer.l\"", "",
+    "FAILED TO OPEN OR CREATE \"lexer.l\"", "",
     "IDENTIFIER LONGER THAN 90 CHAR :\n%s", "s",
     "A STRING HAS NOT BEEN CLOSED", "",
 
     /*  Parser  */
+    "FAILED TO OPEN OR CREATE \"parser.p\"", "",
     "INVALID NUMBER OF PARAMETERS IN STATEMENT - LINE : %lu", "o",
     "INVALID STATEMENT - LINE : %lu", "o",
     "INVALID STATEMENT START - LINE : %lu", "o",
