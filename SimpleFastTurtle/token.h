@@ -33,11 +33,6 @@ void function_free(void *data);
 struct Array *array_new();
 void array_free(void *data);
 
-void token_tree_fprintf(FILE *output, struct List *s_tree_token);
-void token_statement_fprintf(FILE *output, void *data, char ident[], char e_pos);
-void token_expression_fprintf(FILE *output, void *data, char ident[], char e_pos);
-void token_expression_tree_fprintf(FILE *output, void *data, char ident[]);
-
 
 
 struct TokenNode {

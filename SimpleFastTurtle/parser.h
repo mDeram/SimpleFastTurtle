@@ -4,8 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "token.h"
 #include "list.h"
+#include "token.h"
+#include "tree_printer.h"
 #include "error.h"
 #include "warning.h"
 
