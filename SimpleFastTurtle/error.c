@@ -6,7 +6,7 @@
  *      exit(EXIT_FAILURE)
  */
 
-static void print_id(int error_id);
+static void print_id(const int error_id);
 
 
 
@@ -25,30 +25,33 @@ static const char *c_error_list[100] = {
     /*  Parser  */
     "FAILED TO OPEN OR CREATE \"parser.p\"", "",
     "INVALID NUMBER OF PARAMETERS IN STATEMENT - LINE : %lu", "o",
+    "INVALID EXPRESSION - LINE : %lu", "o",
+    "INVALID EXPRESSION START - LINE : %lu", "o",
+    "INVALID EXPRESSION END - LINE : %lu", "o",
     "INVALID STATEMENT - LINE : %lu", "o",
     "INVALID STATEMENT START - LINE : %lu", "o",
     "INVALID STATEMENT BLOCK START - LINE : %lu", "o",
     "INVALID STATEMENT BLOCK - LINE : %lu", "o",
     "INVALID STATEMENT BLOCK END - LINE : %lu", "o",
-    "INVALID EXPRESSION - LINE : %lu", "o",
     "INVALID VARIABLE ASSIGNMENT - LINE : %lu", "o",
+    "NOT HANDLED KEYWORD : \"%s\"", "s",
 };
 
 
 
-static void print_id(int error_id)
+static void print_id(const int error_id)
 {
     fprintf(stderr, "ERROR (id%d): ", error_id);
 }
 
-void error_print(int error_id)
+void error_print(const int error_id)
 {
     print_id(error_id);
     fprintf(stderr, "%s\n", c_error_list[error_id*2]);
     exit(EXIT_FAILURE);
 }
 
-void error_printd(int error_id, void *data)
+void error_printd(const int error_id, const void *data)
 {
     print_id(error_id);
     switch(c_error_list[error_id*2+1][0])

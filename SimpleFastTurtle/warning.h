@@ -7,8 +7,8 @@
 
 
 
-void warning_print(int warning_id);
-void warning_printd(int warning_id, void *data);
+void warning_print(const int warning_id);
+void warning_printd(const int warning_id, const void *data);
 
 
 

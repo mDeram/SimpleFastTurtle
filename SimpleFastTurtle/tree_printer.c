@@ -131,7 +131,7 @@ void token_expression_tree_fprintf(FILE *output, void *data)
         ast_ident_apply(output);
         fprintf(output, "└─R ");
 
-        ast_ident_add(" ");
+        ast_ident_add("  ");
         token_expression_tree_fprintf(output, s_expression->operator->right);
         ast_ident_recover(index);
         break;

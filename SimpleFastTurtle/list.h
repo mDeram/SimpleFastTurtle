@@ -22,7 +22,7 @@ void list_free_foreach(struct List *list, void (*callback)(void *));
 
 
 struct List {
-    unsigned long int size;
+    unsigned long size;
     struct ListNode *head;
     struct ListNode *tail;
 };
