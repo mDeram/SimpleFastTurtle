@@ -10,8 +10,7 @@ static void save_in_file(struct List *s_tree_token, struct List *s_list_token);
 static void parse(struct List *s_tree_token, struct List *s_list_token);
 static int next_node(struct ParserNode *s_cur);
 static void remove_all_token(struct ParserNode *s_cur, char to_remove);
-static void parse_expression_block(struct ParserNode *s_cur,
-                                   struct List *s_list);
+static void parse_expression_block(struct ParserNode *s_cur, struct List *s_list);
 static void parse_statement_block(struct ParserNode *s_cur,
                                   struct Statement *s_statement);
 static void statement_inline(struct ParserNode *s_cur,
@@ -21,28 +20,30 @@ static void statement_block(struct ParserNode *s_cur,
 static void statement_start(struct ParserNode *s_cur,
                                   struct Statement *s_statement);
 static struct Statement *parse_statement(struct ParserNode *s_cur);
-static int is_token_valid_in_expression(struct TokenNode *token,
-                                        int bracket_stack);
+static int expression_is_token_valid(struct TokenNode *token);
 static int expression_can_token_follow(struct TokenNode *last2,
                                        struct TokenNode *last,
                                        struct TokenNode *cur);
 static short bracket_end_to_start(short bracket);
-static int expression_size_validity(struct ParserNode *s_cur,
-                                    unsigned long *p_size);
 static struct TokenNode **expression_to_array(struct ListNode *copy_node,
-                                              unsigned int size);
-static struct Expression *parse_expression(struct ParserNode *s_cur);
+                                              unsigned long start,
+                                              unsigned long stop);
+static void find_lowest_precedence(struct TokenNode **expression_arr,
+                                   unsigned long start, unsigned long stop,
+                                   short *lowest_precedence, unsigned long *index);
 static struct Expression *parse_nested_expression(
                                             struct TokenNode **expression_arr,
-                                            int start, int stop);
+                                            unsigned long start,
+                                            unsigned long stop);
 static void parse_function_params(struct List *params,
-                             struct TokenNode **expression_arr,
-                             int start, int stop);
+                                  struct TokenNode **expression_arr,
+                                  int start, int stop);
 static int is_function(struct TokenNode **expression_arr, int start, int stop);
 static int is_array(struct TokenNode **expression_arr, int start, int stop);
-static void remove_useless_rb(struct TokenNode **expression_arr,
-                              int *start, int *stop);
+static void remove_useless_rb(struct TokenNode *expression[],
+                              unsigned long *start, unsigned long *stop);
 static struct TokenNode *get_token_null();
+static struct Boundary *boundary_create(unsigned long start, unsigned long stop);
 
 
 
@@ -76,8 +77,7 @@ void parser_free(struct List *s_tree_token)
 
 static void save_in_file(struct List *s_tree_token, struct List *s_list_token)
 {
-    FILE *output = NULL;
-    output = fopen("parser.p", "w+");
+    FILE *output = fopen("parser.p", "w+");
     if (output == NULL)
         error_print(ERROR_PARSER_FILE_OUTPUT_FAILURE);
 
@@ -115,7 +115,7 @@ static void parse(struct List *s_tree_token, struct List *s_list_token)
 
 static int next_node(struct ParserNode *s_cur)
 {
-    //printf("ID: %d\n", s_cur->token->id);
+    printf("ID: %d\n", s_cur->token->id);
     s_cur->node = s_cur->node->next;
     if (s_cur->node == NULL)
         return 0;
@@ -131,43 +131,6 @@ static void remove_all_token(struct ParserNode *s_cur, char to_remove)
 
     while ((s_cur->token->id == to_remove) && next_node(s_cur))
         ;
-}
-
-static void parse_expression_block(struct ParserNode *s_cur,
-                                   struct List *s_list)
-{
-    /*
-    unsigned long tmp_line = s_cur->token->line;
-    if (s_cur->token->id != TOK_SEP_RBS || !next_node(s_cur))
-    {
-        error_printd(ERROR_PARSER_INVALID_EXPRESSION_START,
-                     &tmp_line);
-    }
-    */
-
-    struct ListNode *s_last_node = NULL;
-    unsigned long last_size = 0;
-
-    do {
-        if (s_last_node == s_cur->node && last_size == s_list->size)
-            error_printd(ERROR_PARSER_INVALID_EXPRESSION, &s_cur->token->line);
-
-        s_last_node = s_cur->node;
-        last_size = s_list->size;
-
-        struct Expression *new_expression = parse_expression(s_cur);
-        if (new_expression != NULL)
-            list_push(s_list, new_expression);
-    } while (s_cur->token->id == TOK_SEP_COMMA);
-
-    /*
-    if (s_cur->token->id != TOK_SEP_RBE)
-    {
-        error_printd(ERROR_PARSER_INVALID_EXPRESSION_END,
-                     &s_cur->token->line);
-    }
-    next_node(s_cur);
-    */
 }
 
 static void parse_statement_block(struct ParserNode *s_cur,
@@ -255,7 +218,7 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
     {
         switch(s_cur->token->id)
         {
-        case TOK_KEY_FOR: /*for transformed to a while ?*/
+        case TOK_KEY_FOR:
         case TOK_KEY_WHILE:
         case TOK_KEY_IF:
         case TOK_KEY_ELIF:
@@ -302,16 +265,17 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
         case TOK_KEY_BREAK:
             statement_start(s_cur, s_statement);
             break;
+
         case TOK_KEY_RETURN:
             statement_start(s_cur, s_statement);
             parse_expression_block(s_cur, s_statement->expressions);
             break;
 
         default:
-            error_printd(ERROR_PARSER_NOT_HANDLED_KEYWORD, s_cur->token->token);
+            error_printd(ERROR_PARSER_NOT_HANDLED_KEYWORD, s_cur->token);
         }
     }
-    else if (is_token_valid_in_expression(s_cur->token, 1))
+    else if (expression_is_token_valid(s_cur->token))
     {
         s_statement->token = NULL;
         parse_expression_block(s_cur, s_statement->expressions);
@@ -320,18 +284,16 @@ static struct Statement *parse_statement(struct ParserNode *s_cur)
     {
         error_printd(ERROR_PARSER_INVALID_STATEMENT, &s_statement->token->line);
     }
+
     return s_statement;
 }
 
-static int is_token_valid_in_expression(struct TokenNode *token,
-                                        int bracket_stack)
+static int expression_is_token_valid(struct TokenNode *token)
 {
-    if (token->id == TOK_SEP_COMMA)
-        return bracket_stack;
-
     return (token->type == TOK_TYPE_ID
          || token->type == TOK_TYPE_LI
          || token->type == TOK_TYPE_OP
+         || token->id   == TOK_SEP_COMMA
          || token->id   == TOK_SEP_RBS
          || token->id   == TOK_SEP_RBE
          || token->id   == TOK_SEP_SBS
@@ -357,7 +319,6 @@ static int expression_can_token_follow(struct TokenNode *last2,
         return 1;
 
     if (last->id == TOK_OP_INCR || last->id == TOK_OP_DECR)
-    {
         return !(
                     (cur->type == TOK_TYPE_ID
                   || cur->type == TOK_TYPE_LI
@@ -367,7 +328,6 @@ static int expression_can_token_follow(struct TokenNode *last2,
                   || last2->type == TOK_TYPE_LI
                   || last2->type == TOK_TYPE_KEY)
                 );
-    }
 
     return 1;
 }
@@ -384,104 +344,205 @@ static short bracket_end_to_start(short bracket)
         return 0;
     }
 }
-#if 0
-static void expression_update_function_stack(unsigned long *function_stack)
-{
 
-}
-#endif
-static int expression_size_validity(struct ParserNode *s_cur,
-                                    unsigned long *p_size)
+static struct List *expression_to_boundary_list(struct ParserNode *s_cur)
 {
-    /*
-     * Count Expression size
-     * Check if there is as much opening and closing RB && SB
-     * in a valid order
-     */
-    size_t index = 0;
-    size_t size = 16; /*If 16 is to small, size *= 2*/
-    unsigned long *bracket_stack = malloc(sizeof(unsigned long)*size);
-    //unsigned long *function_stack = malloc(sizeof(unsigned long)*size);
+    unsigned long size = 0;
+    struct List *boundaries = list_new();
+    short is_inside_rb = (s_cur->token->id == TOK_SEP_RBS);
+    size_t stack_index = 0;
+    size_t stack_size  = 16; /*If 16 is to small, stack_size *= 2*/
+    unsigned char *stack = malloc(sizeof(unsigned char)*stack_size);
+    if (stack == NULL) exit(EXIT_FAILURE);
 
     struct TokenNode *last2 = NULL;
-    struct TokenNode *last = NULL;
-    while (is_token_valid_in_expression(s_cur->token, index)
-        && expression_can_token_follow(last2, last, s_cur->token))
-    {
-        (*p_size)++;
+    struct TokenNode *last1 = NULL;
 
+    while (expression_is_token_valid(s_cur->token)
+        && expression_can_token_follow(last2, last1, s_cur->token))
+    {
         if (s_cur->token->id == TOK_SEP_RBS || s_cur->token->id == TOK_SEP_SBS)
         {
-            index++;
-            bracket_stack[index] = s_cur->token->id;
+            stack[stack_index] = s_cur->token->id;
+            stack_index++;
         }
         else if (s_cur->token->id == TOK_SEP_RBE || s_cur->token->id == TOK_SEP_SBE)
         {
-            if (index == 0)
-            {
-                free(bracket_stack);
-                return -1;
-            }
-            if (bracket_stack[index] != bracket_end_to_start(s_cur->token->id))
+            stack_index--;
+            if (stack_index < 0)
                 break;
-            index--;
+            if (stack[stack_index]
+                != bracket_end_to_start(s_cur->token->id))
+                break;
+        }
+        else if (s_cur->token->id == TOK_SEP_COMMA)
+        {
+            if (!stack_index)
+            {
+                /* Some expressions are inside round bracket but it's not the
+                 * case anymore: raising error
+                 */
+                if (is_inside_rb && boundaries->size)
+                    return NULL;
+
+                is_inside_rb = 0;
+                struct Boundary *new_boundary = NULL;
+
+                if (!boundaries->size)
+                {
+                    new_boundary = boundary_create(0, size);
+                }
+                else
+                {
+                    unsigned int stop
+                            = ((struct Boundary*)boundaries->tail->data)->stop;
+                    new_boundary = boundary_create(stop + 2, size);
+                }
+
+                list_push(boundaries, new_boundary);
+            }
+            else if (stack_index == 1 && is_inside_rb)
+            {
+                struct Boundary *new_boundary = NULL;
+
+                if (!boundaries->size)
+                {
+                    printf("size %ld\n", size);
+                    new_boundary = boundary_create(1, size - is_inside_rb);
+                }
+                else
+                {
+                    unsigned int stop
+                            = ((struct Boundary*)boundaries->tail->data)->stop;
+                    new_boundary = boundary_create(stop + 2, size - is_inside_rb);
+                }
+
+                list_push(boundaries, new_boundary);
+            }
+            //else the comma is included in the expression
         }
 
-        last2 = last;
-        last = s_cur->token;
+        last2 = last1;
+        last1 = s_cur->token;
         if (!next_node(s_cur))
             break;
 
-        if (index == size-1)
+        if (stack_index == stack_size-1)
         {
-            size *= 2;
-            bracket_stack = realloc(bracket_stack, sizeof(unsigned long)*size);
-            if (bracket_stack == NULL) exit(EXIT_FAILURE);
+            stack_size *= 2;
+            stack = realloc(stack, sizeof(unsigned long)*stack_size);
+            if (stack == NULL) exit(EXIT_FAILURE);
         }
+        size++;
     }
 
-    free(bracket_stack);
-    return index;
+    struct Boundary *new_boundary = NULL;
+
+    if (!boundaries->size)
+    {
+        new_boundary = boundary_create(0, size - 1);
+    }
+    else
+    {
+        unsigned int stop = ((struct Boundary*)boundaries->tail->data)->stop;
+        new_boundary = boundary_create(stop + 2, size - 1 - is_inside_rb);
+    }
+
+    list_push(boundaries, new_boundary);
+
+    free(stack);
+
+    if (stack_index)
+        return NULL;
+    else
+        return boundaries;
 }
 
-static struct TokenNode **expression_to_array(struct ListNode *copy_node,
-                                              unsigned int size)
+static struct TokenNode **expression_to_array(struct ListNode *node,
+                                              unsigned long start,
+                                              unsigned long stop)
 {
-    struct TokenNode **expression_arr = malloc(sizeof(struct TokenNode*)*size);
+    struct TokenNode **expression_arr = malloc(sizeof(struct TokenNode*)*stop);
     if (expression_arr == NULL) exit(EXIT_FAILURE);
 
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i <= stop; i++)
     {
-        expression_arr[i] = (struct TokenNode*)copy_node->data;
-        copy_node = copy_node->next;
+        if (i >= start)
+        {
+            expression_arr[i] = (struct TokenNode*)node->data;
+            //printf("%s", ((struct TokenNode*)node->data)->token);
+        }
+        node = node->next;
     }
+
+    //printf("\n");
 
     return expression_arr;
 }
 
-static struct Expression *parse_expression(struct ParserNode *s_cur)
+static void parse_expression_block(struct ParserNode *s_cur, struct List *s_list)
 {
     unsigned long tmp_line = s_cur->token->line;
     remove_all_token(s_cur, TOK_SEP_COMMA);
     if (s_cur->node == NULL)
         error_printd(ERROR_PARSER_INVALID_EXPRESSION, &tmp_line);
 
-    unsigned long size = 0;
     struct ListNode *copy_node = s_cur->node;
 
-    //expression_size(s_cur, &size);
-
-    if (expression_size_validity(s_cur, &size))
+    struct List *expr_boundaries = expression_to_boundary_list(s_cur);
+    if (expr_boundaries == NULL || !expr_boundaries->size)
         error_printd(ERROR_PARSER_INVALID_EXPRESSION, &tmp_line);
 
-    struct TokenNode **expression_arr
-            = expression_to_array(copy_node, size);
+    unsigned int start = ((struct Boundary*)expr_boundaries->head->data)->start;
+    unsigned int stop  = ((struct Boundary*)expr_boundaries->tail->data)->stop;
+    struct TokenNode **expression_arr = expression_to_array(copy_node, start, stop);
 
-    struct Expression *s_expression
-            = parse_nested_expression(expression_arr, 0, size-1);
+    list_foreach_(expr_boundaries, node)
+    {
+        struct Boundary *boundary = (struct Boundary*)node->data;
+        struct Expression *s_expression = parse_nested_expression(expression_arr,
+                                                                  boundary->start,
+                                                                  boundary->stop);
+        //if (s_expression == NULL)
+        list_push(s_list, s_expression);
+    }
 
+    //free boundaries
     free(expression_arr);
-    return s_expression;
+}
+
+static void find_lowest_precedence(struct TokenNode **expression_arr,
+                                   unsigned long start, unsigned long stop,
+                                   short *lowest_precedence, unsigned long *index)
+{
+    unsigned long bracket_stack = 0;
+    for (unsigned long i = start; i <= stop; i++)
+    {
+        if (expression_arr[i]->id == TOK_SEP_RBS || expression_arr[i]->id == TOK_SEP_SBS)
+        {
+            bracket_stack++;
+        }
+        else if (expression_arr[i]->id == TOK_SEP_RBE || expression_arr[i]->id == TOK_SEP_SBE)
+        {
+            bracket_stack--;
+        }
+        else if (!bracket_stack)
+        {
+            if (expression_arr[i]->type == TOK_TYPE_OP)
+            {
+                short cur_precedence = OPERATOR_PRECEDENCE[expression_arr[i]->id];
+                if (cur_precedence < *lowest_precedence)
+                {
+                    *lowest_precedence = cur_precedence;
+                    *index = i;
+                }
+            }
+            else if (expression_arr[i]->id == TOK_SEP_COMMA)
+            {
+                error_printd(ERROR_PARSER_INVALID_EXPRESSION, &(expression_arr[i]->line));
+            }
+        }
+    }
 }
 
 /*
@@ -493,36 +554,18 @@ static struct Expression *parse_expression(struct ParserNode *s_cur)
  */
 static struct Expression *parse_nested_expression(
                                             struct TokenNode **expression_arr,
-                                            int start, int stop)
+                                            unsigned long start,
+                                            unsigned long stop)
 {
     struct Expression *s_expression = expression_new();
 
     remove_useless_rb(expression_arr, &start, &stop);
 
-    /* Expression parsing */
     short lowest_precedence = 100;
-    int lowest_precedence_index = 0;
-    int bracket_stack = 0;
-    for (int i = start; i <= stop; i++)
-    {
-        if (expression_arr[i]->id == TOK_SEP_RBS || expression_arr[i]->id == TOK_SEP_SBS)
-        {
-            bracket_stack++;
-        }
-        else if (expression_arr[i]->id == TOK_SEP_RBE || expression_arr[i]->id == TOK_SEP_SBE)
-        {
-            bracket_stack--;
-        }
-        else if (!bracket_stack && expression_arr[i]->type == TOK_TYPE_OP)
-        {
-            short cur_precedence = OPERATOR_PRECEDENCE[expression_arr[i]->id];
-            if (cur_precedence < lowest_precedence)
-            {
-                lowest_precedence = cur_precedence;
-                lowest_precedence_index = i;
-            }
-        }
-    }
+    unsigned long lowest_precedence_index = 0;
+
+    find_lowest_precedence(expression_arr, start, stop,
+                           &lowest_precedence, &lowest_precedence_index);
 
     if (lowest_precedence < 100)
     {
@@ -589,6 +632,11 @@ static struct Expression *parse_nested_expression(
         s_expression->array->param
                 = parse_nested_expression(expression_arr, start+2, stop-1);
     }
+    /*else if (expression_arr[start]->id == TOK_SEP_COMMA)
+    {
+        printf("comma fail\n");
+        exit(EXIT_FAILURE);
+    }*/
     else
     {
         s_expression->type = EXPRESSION_TYPE_LI;
@@ -610,7 +658,7 @@ static void parse_function_params(struct List *params,
             bracket_stack++;
         else if (expression_arr[i]->id == TOK_SEP_RBE)
             bracket_stack--;
-        
+
         if (i == stop
             || (!bracket_stack && expression_arr[i]->id == TOK_SEP_COMMA))
         {
@@ -624,9 +672,11 @@ static void parse_function_params(struct List *params,
             }
             start = i+1;
         }
-        else if (!is_token_valid_in_expression(expression_arr[i], bracket_stack))
+        else if (!expression_is_token_valid(expression_arr[i]))
+        {
             error_printd(ERROR_PARSER_INVALID_EXPRESSION,
-                         &(expression_arr[i]->line));//no
+                         &(expression_arr[i]->line));
+        }
 
         i++;
     }
@@ -653,7 +703,7 @@ static int is_array(struct TokenNode **expression_arr, int start, int stop)
 }
 
 static void remove_useless_rb(struct TokenNode *expression[],
-                              int *start, int *stop)
+                              unsigned long *start, unsigned long *stop)
 {
     if (*stop < *start)
         return;
@@ -697,6 +747,16 @@ static struct TokenNode *get_token_null()
 {
     //File line start at one so using 0 show that the parser added it to the code
     return token_null;
+}
+
+static struct Boundary *boundary_create(unsigned long start, unsigned long stop)
+{
+    struct Boundary *new = malloc(sizeof(struct Boundary));
+
+    new->start = start;
+    new->stop = stop;
+
+    return new;
 }
 
 

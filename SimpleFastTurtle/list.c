@@ -7,9 +7,7 @@
 struct List *list_new()
 {
     struct List *list = malloc(sizeof(struct List));
-
-    if (list == NULL)
-        exit(EXIT_FAILURE);
+    if (list == NULL) exit(EXIT_FAILURE);
 
     list->size = 0;
     list->head = NULL;
@@ -21,8 +19,7 @@ struct List *list_new()
 void list_push(struct List *list, void *data)
 {
     struct ListNode *node = malloc(sizeof(struct ListNode));
-    if (node == NULL)
-        exit(EXIT_FAILURE);
+    if (node == NULL) exit(EXIT_FAILURE);
 
     node->data = data;
     node->next = NULL;

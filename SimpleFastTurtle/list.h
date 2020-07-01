@@ -21,6 +21,11 @@ void list_free_foreach(struct List *list, void (*callback)(void *));
 
 
 
+#define list_foreach_(list, item)\
+    for (struct ListNode *item = list->head; item != NULL; item = item->next)
+
+
+
 struct List {
     unsigned long size;
     struct ListNode *head;

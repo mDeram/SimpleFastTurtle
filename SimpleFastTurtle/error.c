@@ -14,7 +14,11 @@ static const char *c_error_list[100];
 
 
 
-/* o = lu */
+/*
+ * o = lu
+ * s = s
+ * t = token
+ */
 static const char *c_error_list[100] = {
     /*  Lexer   */
     "FILE \"%s\" NOT FOUND FOUND", "s",
@@ -34,7 +38,7 @@ static const char *c_error_list[100] = {
     "INVALID STATEMENT BLOCK - LINE : %lu", "o",
     "INVALID STATEMENT BLOCK END - LINE : %lu", "o",
     "INVALID VARIABLE ASSIGNMENT - LINE : %lu", "o",
-    "NOT HANDLED KEYWORD : \"%s\"", "s",
+    "NOT HANDLED KEYWORD : \"%s\" - LINE : %lu", "t",
 };
 
 
@@ -62,6 +66,12 @@ void error_printd(const int error_id, const void *data)
     case 'o':
         fprintf(stderr, c_error_list[error_id*2], *(unsigned long *)data);
         break;
+    case 't':
+    {
+        struct TokenNode *node = (struct TokenNode *)data;
+        fprintf(stderr, c_error_list[error_id*2], node->token, node->line);
+        break;
+    }
     }
     exit(EXIT_FAILURE);
 }

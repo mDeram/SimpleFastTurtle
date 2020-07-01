@@ -33,8 +33,7 @@ struct TokenNode *token_new(const unsigned long int current_line,
     if (type == TOK_TYPE_ID && len > 32)
         len = 32;
     node->token = malloc(sizeof(char)*(len));
-    if (node->token == NULL)
-        exit(EXIT_FAILURE);
+    if (node->token == NULL) exit(EXIT_FAILURE);
     strncpy(node->token, token, len-1);
     node->token[len-1] = '\0';
 

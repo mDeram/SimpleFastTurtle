@@ -31,6 +31,13 @@ struct ParserNode {
 
 
 
+struct Boundary {
+    unsigned long start;
+    unsigned long stop;
+};
+
+
+
 enum {
     ASSOCIATIVITY_NA,
     ASSOCIATIVITY_LEFT_TO_RIGHT,
