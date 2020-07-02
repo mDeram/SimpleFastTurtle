@@ -43,7 +43,7 @@ void warning_printd(const int warning_id, const void *data)
         fprintf(stderr, c_warning_list[warning_id*2], (char *)data);
         break;
     case 'o':
-        fprintf(stderr, c_warning_list[warning_id*2], *(unsigned long *)data);
+        fprintf(stderr, c_warning_list[warning_id*2], *(ulong *)data);
         break;
     }
     fprintf(stderr, "\n");

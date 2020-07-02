@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "mwc/forge.h"
+
 #include "list.h"
 #include "token.h"
 #include "error.h"
@@ -13,23 +15,12 @@
 
 
 
-#define LEXER_TOKEN_LENGTH 91
-
-
-void lexer_process(struct List *s_list_token,
-                   char *file_name,
+void lexer_process(List *tokens, char *file_name,
                    int option_save,
                    int option_print_tokens,
                    int option_print_size);
-void lexer_free(struct List *s_list_token);
+void lexer_free(List *tokens);
 
 
-
-struct LexerToken {
-    unsigned long int line;
-    unsigned char index;
-    char c;
-    char token[LEXER_TOKEN_LENGTH];
-};
 
 #endif

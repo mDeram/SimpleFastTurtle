@@ -7,41 +7,55 @@
 #include <string.h>
 #include <stddef.h>
 
-
-
-struct List *list_new();
-void list_push(struct List *list, void *data);
-void list_fprintf(struct List *list, FILE *output, void (*callback)(FILE *, void *));
-void list_fprintf_pos(struct List *list, FILE *output, void (*callback)(FILE *, void *, char));
-void list_foreach(struct List *list, void (*callback)(void *));
-void list_clear(struct List *list);
-void list_free(struct List *list);
-void list_clear_foreach(struct List *list, void (*callback)(void *));
-void list_free_foreach(struct List *list, void (*callback)(void *));
+#include "mwc/forge.h"
 
 
 
 #define list_foreach_(list, item)\
-    for (struct ListNode *item = list->head; item != NULL; item = item->next)
+    for (ListNode *item = list->head; item != NULL; item = item->next)
+
+
+
+typedef enum ListPos ListPos;
+
+typedef struct List List;
+typedef struct ListNode ListNode;
+
+
+
+List *list_new();
+void list_push(List *list, void *data);
+void list_fprintf(List *list, FILE *output, void (*callback)(FILE *, void *));
+void list_fprintf_pos(List *list, FILE *output,
+                      void (*callback)(FILE *, void *, ListPos));
+void list_foreach(List *list, void (*callback)(void *));
+void list_clear(List *list);
+void list_free(List *list);
+void list_clear_foreach(List *list, void (*callback)(void *));
+void list_free_foreach(List *list, void (*callback)(void *));
 
 
 
 struct List {
-    unsigned long size;
-    struct ListNode *head;
-    struct ListNode *tail;
+    ulong size;
+    ListNode *head;
+    ListNode *tail;
 };
 
 struct ListNode {
     void *data;
-    struct ListNode *next;
+    ListNode *next;
 };
 
-enum {
-    LIST_START,
-    LIST_INSIDE,
-    LIST_END,
-    LIST_ALL, /* list length = 1 */
+
+
+enum ListPos {
+    LIST_POS_START,
+    LIST_POS_INSIDE,
+    LIST_POS_END,
+    LIST_POS_ALL, /* if list length = 1 */
 };
+
+
 
 #endif

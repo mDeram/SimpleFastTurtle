@@ -8,37 +8,45 @@
 static void ast_ident_add(char to_add[]);
 static void ast_ident_grow();
 static void ast_ident_recover(size_t index);
-static void ast_ident_list_end(const char e_pos);
-static void ast_prefix_list_end(FILE *output, const char e_pos);
+static void ast_ident_list_end(ListPos pos);
+static void ast_prefix_list_end(FILE *output, ListPos pos);
 static void ast_ident_apply(FILE *output);
 
 
 
-static struct AstIdent s_ident;
+typedef struct {
+    size_t index;
+    size_t size;
+    char *ident;
+} AstIdent;
 
 
 
-void token_tree_fprintf(FILE *output, struct List *s_tree_token)
+static AstIdent g_ident;
+
+
+
+void token_tree_fprintf(FILE *output, List *s_tree_token)
 {
-    s_ident.index = 0;
-    s_ident.size = 1280;
-    s_ident.ident = malloc(sizeof(char)*s_ident.size);
-    s_ident.ident[s_ident.index] = '\0';
+    g_ident.index = 0;
+    g_ident.size = 1280;
+    g_ident.ident = malloc(sizeof(char)*g_ident.size);
+    g_ident.ident[g_ident.index] = '\0';
 
     if (s_tree_token->size)
         list_fprintf_pos(s_tree_token, output, token_statement_fprintf);
 
-    free(s_ident.ident);
+    free(g_ident.ident);
 }
 
-void token_statement_fprintf(FILE *output, void *data, char e_pos)
+void token_statement_fprintf(FILE *output, void *data, ListPos pos)
 {
-    struct Statement *s_statement = (struct Statement*)data;
-    size_t index = s_ident.index;
+    Statement *s_statement = (Statement*)data;
+    size_t index = g_ident.index;
     size_t statement_name_len = 0;
 
     ast_ident_apply(output);
-    ast_prefix_list_end(output, e_pos);
+    ast_prefix_list_end(output, pos);
 
     /*Token*/
     if (s_statement->token == NULL)
@@ -53,8 +61,8 @@ void token_statement_fprintf(FILE *output, void *data, char e_pos)
     }
 
     /*Expressions*/
-    ast_ident_list_end(e_pos);
-    size_t big_index = s_ident.index;
+    ast_ident_list_end(pos);
+    size_t big_index = g_ident.index;
 
     if (s_statement->statements != NULL && s_statement->statements->size)
         ast_ident_add("|");
@@ -87,14 +95,14 @@ void token_statement_fprintf(FILE *output, void *data, char e_pos)
     ast_ident_recover(index);
 }
 
-void token_expression_fprintf(FILE *output, void *data, char e_pos)
+void token_expression_fprintf(FILE *output, void *data, ListPos pos)
 {
-    struct Expression *s_expression = (struct Expression*)data;
-    size_t index = s_ident.index;
+    Expression *s_expression = (Expression*)data;
+    size_t index = g_ident.index;
 
     ast_ident_apply(output);
-    ast_prefix_list_end(output, e_pos);
-    ast_ident_list_end(e_pos);
+    ast_prefix_list_end(output, pos);
+    ast_ident_list_end(pos);
 
     token_expression_tree_fprintf(output, s_expression);
 
@@ -103,20 +111,20 @@ void token_expression_fprintf(FILE *output, void *data, char e_pos)
 
 void token_expression_tree_fprintf(FILE *output, void *data)
 {
-    struct Expression *s_expression = (struct Expression*)data;
-    size_t index = s_ident.index;
+    Expression *s_expression = (Expression*)data;
+    size_t index = g_ident.index;
 
     switch(s_expression->type)
     {
-    case EXPRESSION_TYPE_ID:
+    case EXPR_TYPE_ID:
         fprintf(output, "%s\n", s_expression->identifier->token);
         break;
 
-    case EXPRESSION_TYPE_LI:
+    case EXPR_TYPE_LI:
         fprintf(output, "%s\n", s_expression->literal->token);
         break;
 
-    case EXPRESSION_TYPE_OP:
+    case EXPR_TYPE_OP:
         fprintf(output, "%s\n", s_expression->operator->token->token);
 
         /*Left*/
@@ -136,7 +144,7 @@ void token_expression_tree_fprintf(FILE *output, void *data)
         ast_ident_recover(index);
         break;
 
-    case EXPRESSION_TYPE_FN:
+    case EXPR_TYPE_FN:
         fprintf(output, "%s(\n", s_expression->function->identifier->token);
 
         ast_ident_apply(output);
@@ -153,13 +161,13 @@ void token_expression_tree_fprintf(FILE *output, void *data)
         ast_ident_recover(index);
         break;
 
-    case EXPRESSION_TYPE_ARRAY:
-        fprintf(output, "%s[\n", s_expression->array->identifier->token);
+    case EXPR_TYPE_ARRAY:
+        fprintf(output, "%s[\n", s_expression->expr_array->identifier->token);
 
         ast_ident_add("  ");
         ast_ident_apply(output);
 
-        token_expression_tree_fprintf(output, s_expression->array->param);
+        token_expression_tree_fprintf(output, s_expression->expr_array->param);
 
         ast_ident_apply(output);
         fprintf(output, "]\n");
@@ -176,37 +184,37 @@ static void ast_ident_add(char to_add[])
 {
     size_t len = strlen(to_add);
 
-    while (s_ident.index + len >= s_ident.size-1)
+    while (g_ident.index + len >= g_ident.size-1)
         ast_ident_grow();
 
-    strcat(s_ident.ident, to_add);
-    s_ident.index += len;
+    strcat(g_ident.ident, to_add);
+    g_ident.index += len;
 }
 
 static void ast_ident_grow()
 {
-    s_ident.size *= 2;
-    s_ident.ident = realloc(s_ident.ident, sizeof(s_ident.size));
-    if (s_ident.ident == NULL) exit(EXIT_FAILURE);
+    g_ident.size *= 2;
+    g_ident.ident = realloc(g_ident.ident, sizeof(g_ident.size));
+    if (g_ident.ident == NULL) exit(EXIT_FAILURE);
 }
 
 static void ast_ident_recover(size_t index)
 {
-    s_ident.index = index;
-    s_ident.ident[index] = '\0';
+    g_ident.index = index;
+    g_ident.ident[index] = '\0';
 }
 
-static void ast_ident_list_end(const char e_pos)
+static void ast_ident_list_end(ListPos pos)
 {
-    if (e_pos == LIST_END || e_pos == LIST_ALL)
+    if (pos == LIST_POS_END || pos == LIST_POS_ALL)
         ast_ident_add("  ");
     else
         ast_ident_add("| ");
 }
 
-static void ast_prefix_list_end(FILE *output, const char e_pos)
+static void ast_prefix_list_end(FILE *output, ListPos pos)
 {
-    if (e_pos == LIST_END || e_pos == LIST_ALL)
+    if (pos == LIST_POS_END || pos == LIST_POS_ALL)
         fprintf(output, "└─");
     else
         fprintf(output, "├─");
@@ -214,5 +222,5 @@ static void ast_prefix_list_end(FILE *output, const char e_pos)
 
 static void ast_ident_apply(FILE *output)
 {
-    fprintf(output, "%s", s_ident.ident);
+    fprintf(output, "%s", g_ident.ident);
 }

@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "mwc/forge.h"
+
 #include "list.h"
 #include "token.h"
 #include "tree_printer.h"
@@ -12,37 +14,22 @@
 
 
 
-void parser_process(struct List *s_tree_token,
-                    struct List *s_list_token,
-                    int option_save,
-                    int option_print_tree);
-void parser_free(struct List *s_tree_token);
+typedef enum {
+    ASSO_NA,
+    ASSO_LEFT_TO_RIGHT,
+    ASSO_RIGHT_TO_LEFT,
+} Associativity;
+
+
+
+
+void parser_process(List *tree_token, List *tokens,
+                    int option_save, int option_print);
+void parser_free(List *tree_token);
 
 
 
 extern const short OPERATOR_ASSOCIATIVITY[127];
-
-
-
-struct ParserNode {
-    struct ListNode *node;
-    struct TokenNode *token;
-};
-
-
-
-struct Boundary {
-    unsigned long start;
-    unsigned long stop;
-};
-
-
-
-enum {
-    ASSOCIATIVITY_NA,
-    ASSOCIATIVITY_LEFT_TO_RIGHT,
-    ASSOCIATIVITY_RIGHT_TO_LEFT,
-};
 
 
 

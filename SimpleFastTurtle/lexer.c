@@ -6,183 +6,196 @@
  *  Return a list of token
  */
 
-static void handle_args(struct List *s_list_token, int option_save,
-                        int option_print_tokens, int option_print_size);
-static void save_in_file(struct List *s_list_token);
-static void tokenize(FILE *f, struct List *s_list_token);
-static void tokenize_core(FILE *f, struct List *s_list_token,
-                          struct LexerToken *s_cur);
-static void handle_operator(struct List *s_list_token, struct LexerToken *s_cur);
-static int handle_strings(FILE *f, struct List *s_list_token,
-                          struct LexerToken *s_cur);
-static int handle_comments(FILE *f, struct LexerToken *s_cur);
-static void general_test(struct List *s_list_token, struct LexerToken *s_cur);
-static int is_literal(const char token[]);
-static int is_keyword(const char token[]);
-static int is_operator(const char token);
-static int is_double_operator(const char op1, const char op2);
-static int is_separator(const char token);
+#define LEXER_TOKEN_LENGTH 91
+
+
+
+typedef struct {
+    ulong line;
+    uchar index;
+    char c;
+    char token[LEXER_TOKEN_LENGTH];
+} LexerToken;
+
+
+
+
+static void handle_args(List *tokens,
+                        int option_save,
+                        int option_print_tokens,
+                        int option_print_size);
+static void save_in_file(List *tokens);
+static void tokenize(FILE *f, List *tokens);
+static void tokenize_core(FILE *f, List *tokens, LexerToken *current);
+static void handle_operator(List *tokens, LexerToken *current);
+static int handle_strings(FILE *f, List *tokens, LexerToken *current);
+static void handle_inline_comment(FILE *f, LexerToken *current);
+static void handle_block_comment(FILE *f, LexerToken *current);
+static bool handle_comments(FILE *f, LexerToken *current);
+static void general_test(List *tokens, LexerToken *current);
+static TokId get_literal(const char token[]);
+static TokId get_keyword(const char token[]);
+static bool is_operator(const char token);
+static TokId get_double_operator(TokenNode *last, char op2);
+static bool is_separator(const char token);
 static char escape_to_char(const char c);
 
 
 
-void lexer_process(struct List *s_list_token,
-                   char *file_name,
+void lexer_process(List *tokens, char *file_name,
                    int option_save,
                    int option_print_tokens,
                    int option_print_size)
 {
-    FILE *f = NULL;
-    f = fopen(file_name, "r");
+    FILE *f = fopen(file_name, "r");
     if (f == NULL)
         error_printd(ERROR_LEXER_FILE_NOT_FOUND, file_name);
 
-    tokenize(f, s_list_token);
+    tokenize(f, tokens);
 
     fclose(f);
 
-    handle_args(s_list_token, option_save,
-                option_print_tokens, option_print_size);
+    handle_args(tokens, option_save, option_print_tokens, option_print_size);
 }
 
-void lexer_free(struct List *s_list_token)
+void lexer_free(List *tokens)
 {
-    list_free_foreach(s_list_token, token_free);
+    list_free_foreach(tokens, token_free);
 }
 
-static void handle_args(struct List *s_list_token, int option_save,
-                        int option_print_tokens, int option_print_size)
+static void handle_args(List *tokens,
+                        int option_save,
+                        int option_print_tokens,
+                        int option_print_size)
 {
     if (option_save)
-        save_in_file(s_list_token);
+        save_in_file(tokens);
 
     if (option_print_tokens)
-        list_fprintf(s_list_token, stdout, token_fprintf);
+        list_fprintf(tokens, stdout, token_fprintf);
 
     if (option_print_size)
-        printf("Token Number: %ld\n", s_list_token->size);
+        printf("Token Number: %ld\n", tokens->size);
 }
 
-static void save_in_file(struct List *s_list_token)
+static void save_in_file(List *tokens)
 {
-    FILE *output = NULL;
-    output = fopen("lexer.l", "w+");
+    FILE *output = fopen("lexer.l", "w+");
     if (output == NULL)
         error_print(ERROR_LEXER_FILE_OUTPUT_FAILURE);
 
-    list_fprintf(s_list_token, output, token_fprintf);
+    list_fprintf(tokens, output, token_fprintf);
 
     fclose(output);
 }
 
-static void tokenize(FILE *f, struct List *s_list_token)
+static void tokenize(FILE *f, List *tokens)
 {
-    struct LexerToken s_cur = {
+    LexerToken current = {
         .line = 1,
         .index = 0,
         .c = ' ',
         .token = ""
     };
 
-    while ((s_cur.c = fgetc(f)) != EOF)
+    while ((current.c = fgetc(f)) != EOF)
     {
-        if (s_cur.c == '\n' || s_cur.c == '\t' || s_cur.c == ' ')
+        if (current.c == '\n' || current.c == '\t' || current.c == ' ')
         {
-            general_test(s_list_token, &s_cur);
+            general_test(tokens, &current);
 
-            if (s_cur.c == '\n')
-                s_cur.line++;
+            if (current.c == '\n')
+                current.line++;
         }
-        else if (s_cur.c != '\r')
+        else if (current.c != '\r')
         {
-            tokenize_core(f, s_list_token, &s_cur);
+            tokenize_core(f, tokens, &current);
         }
 
-        if (s_cur.index == LEXER_TOKEN_LENGTH-1)
-            s_cur.index--;
+        if (current.index == LEXER_TOKEN_LENGTH-1)
+            current.index--;
     }
 
-    general_test(s_list_token, &s_cur);
+    general_test(tokens, &current);
 }
 
-static void tokenize_core(FILE *f, struct List *s_list_token,
-                          struct LexerToken *s_cur)
+static void tokenize_core(FILE *f, List *tokens, LexerToken *current)
 {
-    if (is_operator(s_cur->c))
+    if (is_operator(current->c))
     {
-        general_test(s_list_token, s_cur);
+        general_test(tokens, current);
 
-        s_cur->token[0] = s_cur->c;
-        s_cur->token[1] = '\0';
+        current->token[0] = current->c;
+        current->token[1] = '\0';
 
-        if (!handle_comments(f, s_cur))
+        if (!handle_comments(f, current))
         {
-            handle_operator(s_list_token, s_cur);
+            handle_operator(tokens, current);
         }
     }
-    else if (is_separator(s_cur->c))
+    else if (is_separator(current->c))
     {
-        general_test(s_list_token, s_cur);
+        general_test(tokens, current);
 
-        s_cur->token[0] = s_cur->c;
-        s_cur->token[1] = '\0';
+        current->token[0] = current->c;
+        current->token[1] = '\0';
 
-        if (!handle_strings(f, s_list_token, s_cur))
+        if (!handle_strings(f, tokens, current))
         {
-            list_push(s_list_token,
-                      token_new(s_cur->line, TOK_TYPE_SEP,
-                                s_cur->c, s_cur->token));
+            list_push(tokens, token_create(current->line,
+                                           TOK_TYPE_SEP,
+                                           current->c,
+                                           current->token));
         }
     }
     else
     {
-        s_cur->token[s_cur->index] = s_cur->c;
-        s_cur->index++;
+        current->token[current->index] = current->c;
+        current->index++;
     }
 }
 
-static void handle_operator(struct List *s_list_token, struct LexerToken *s_cur)
+static void handle_operator(List *tokens, LexerToken *current)
 {
     /*
      *  If the last token is a simple operator
      *  Delete it and create a double operator
      */
-    struct TokenNode *s_last_token
-            = (struct TokenNode *)s_list_token->tail->data;
-    char id = 0;
-
-    if (s_last_token->type == TOK_TYPE_OP
-        && s_last_token->id > 20
-        && (id = is_double_operator(s_last_token->token[0], s_cur->token[0])))
+    TokenNode *last = (TokenNode *)tokens->tail->data;
+    TokId id = get_double_operator(last, current->token[0]);
+    if (id != TOK_NULL)
     {
-        s_cur->token[1] = s_cur->token[0];
-        s_cur->token[0] = s_last_token->token[0];
-        s_cur->token[2] = '\0';
-        token_free(s_last_token);
+        current->token[0] = last->token[0];
+        current->token[1] = current->token[0];
+        current->token[2] = '\0';
+        token_free(last);
 
-        struct TokenNode *s_new_token
-                = token_new(s_cur->line, TOK_TYPE_OP, id, s_cur->token);
-        s_list_token->tail->data = s_new_token;
+        TokenNode *new_token = token_create(current->line,
+                                            TOK_TYPE_OP,
+                                            id,
+                                            current->token);
+        tokens->tail->data = new_token;
     }
     else
     {
-        list_push(s_list_token,
-                  token_new(s_cur->line, TOK_TYPE_OP, s_cur->c, s_cur->token));
+        list_push(tokens, token_create(current->line,
+                                       TOK_TYPE_OP,
+                                       current->c,
+                                       current->token));
     }
 }
 
-static int handle_strings(FILE *f, struct List *s_list_token,
-                          struct LexerToken *s_cur)
+static int handle_strings(FILE *f, List *tokens, LexerToken *current)
 {
-    if (s_cur->c != '\'' && s_cur->c != '"')
+    if (current->c != '\'' && current->c != '"')
         return 0;
 
     size_t index = 0;
-    size_t size = 16; /*If 16 is to small, size *= 2*/
-    char *str = malloc(sizeof(char)*size);
+    size_t size  = 16; /*If 16 is to small, size *= 2*/
+    char   *str  = malloc(sizeof(char)*size);
 
     char c;
-    while ((c = fgetc(f)) != EOF && c != s_cur->c && c != '\n')
+    while ((c = fgetc(f)) != EOF && c != current->c && c != '\n')
     {
         if (c == '\\')
         {
@@ -208,101 +221,119 @@ static int handle_strings(FILE *f, struct List *s_list_token,
     }
 
     if (c == '\n')
-        s_cur->line++;
+        current->line++;
     else if (c == EOF)
         error_print(ERROR_LEXER_STRING_NOT_CLOSED);
 
     str[index] = '\0';
-    list_push(s_list_token,
-              token_new(s_cur->line, TOK_TYPE_LI, TOK_LI_STRING, str));
+    list_push(tokens, token_create(current->line,
+                                   TOK_TYPE_LI,
+                                   TOK_LI_STRING,
+                                   str));
 
     free(str);
 
     return 1;
 }
 
-static int handle_comments(FILE *f, struct LexerToken *s_cur)
+static void handle_inline_comment(FILE *f, LexerToken *current)
 {
-    if (s_cur->c != '/')
-        return 0;
+    char c;
+    while ((c = fgetc(f)) != EOF && c != '\n')
+        ;
 
-    char next_char = fgetc(f);
-    if (next_char == '/') /*Inline comment*/
+    current->line++;
+}
+
+static void handle_block_comment(FILE *f, LexerToken *current)
+{
+    char last = fgetc(f);
+    char c;
+    while ((c = fgetc(f)) != EOF && !(last == '*' && c == '/'))
     {
-        char c;
-        while ((c = fgetc(f)) != EOF && c != '\n')
-            ;
+        if (last == '\n')
+            current->line++;
 
-        s_cur->line++;
-
-        return 1;
+        last = c;
     }
 
-    if (next_char == '*') /*Block comment*/
+    if (c == EOF)
+        warning_print(WARNING_LEXER_COMMENT_NOT_CLOSED);
+}
+
+static bool handle_comments(FILE *f, LexerToken *current)
+{
+    if (current->c != '/')
+        return FALSE;
+
+    char next_char = fgetc(f);
+
+    if (next_char == '/')
     {
-        char last = fgetc(f);
-        char c;
-        while ((c = fgetc(f)) != EOF && !(last == '*' && c == '/'))
-        {
-            if (last == '\n')
-                s_cur->line++;
+        handle_inline_comment(f, current);
+        return TRUE;
+    }
 
-            last = c;
-        }
-
-        if (c == EOF)
-            warning_print(WARNING_LEXER_COMMENT_NOT_CLOSED);
-
-        return 1;
+    if (next_char == '*')
+    {
+        handle_block_comment(f, current);
+        return TRUE;
     }
 
     if (next_char != EOF)
         fseek(f, -1, SEEK_CUR);
 
-    return 0;
+    return FALSE;
 }
 
-static void general_test(struct List *s_list_token, struct LexerToken *s_cur)
+static void general_test(List *tokens, LexerToken *current)
 {
-    if (!s_cur->index)
+    if (!current->index)
         return;
 
-    s_cur->token[s_cur->index] = '\0';
-    s_cur->index = 0;
+    current->token[current->index] = '\0';
+    current->index = 0;
 
-    int result;
-    if ((result = is_literal(s_cur->token)))
+    TokId result;
+    if      ((result = get_literal(current->token)) != TOK_NULL)
     {
-        list_push(s_list_token,
-                  token_new(s_cur->line, TOK_TYPE_LI, result, s_cur->token));
+        list_push(tokens, token_create(current->line,
+                                       TOK_TYPE_LI,
+                                       result,
+                                       current->token));
     }
-    else if ((result = is_keyword(s_cur->token)))
+    else if ((result = get_keyword(current->token)) != TOK_NULL)
     {
-        list_push(s_list_token,
-                  token_new(s_cur->line, TOK_TYPE_KEY, result, s_cur->token));
+        list_push(tokens, token_create(current->line,
+                                       TOK_TYPE_KEY,
+                                       result,
+                                       current->token));
     }
     else
     {
-        list_push(s_list_token,
-                  token_new(s_cur->line, TOK_TYPE_ID, TOK_ID, s_cur->token));
+        list_push(tokens, token_create(current->line,
+                                       TOK_TYPE_ID,
+                                       TOK_ID,
+                                       current->token));
     }
 }
 
-static int is_literal(const char token[])
+static TokId get_literal(const char token[])
 {
     char first_char = token[0];
     if (first_char >= '0' && first_char <= '9')
         return TOK_LI_NUMBER;
+    //checking 't' and 'f' first for a bit of speed
     if ((first_char == 't' && !strcmp("true", token))
      || (first_char == 'f' && !strcmp("false", token)))
         return TOK_LI_BOOL;
-    return 0;
+    return TOK_NULL;
 }
 
-static int is_keyword(const char token[])
+static TokId get_keyword(const char token[])
 {
     if (token[0] < 'a' && token[0] > 'w')
-        return 0;
+        return TOK_NULL;
 
     switch(token[0])
     {
@@ -375,10 +406,10 @@ static int is_keyword(const char token[])
             return TOK_KEY_NULL;
         break;
     }
-    return 0;
+    return TOK_NULL;
 }
 
-static int is_operator(const char token)
+static bool is_operator(const char token)
 {
     switch(token)
     {
@@ -394,17 +425,21 @@ static int is_operator(const char token)
     case TOK_OP_BY:
     case TOK_OP_DIV:
     case TOK_OP_MOD:
-        return 1;
+        return TRUE;
     default:
-        return 0;
+        return FALSE;
     }
 }
 
-static int is_double_operator(const char op1, const char op2)
+static TokId get_double_operator(TokenNode *last, char op2)
 {
+    /* is last token simple operator */
+    if (!(last->type == TOK_TYPE_OP && last->id > 20))
+        return TOK_NULL;
     /*
      * Evaluating op2 first reduce the number of cases
      */
+    char op1 = last->token[0];
     if (op2 == op1)
     {
         switch(op1)
@@ -445,10 +480,10 @@ static int is_double_operator(const char op1, const char op2)
             return TOK_OP_DIV_ASIGN;
         }
     }
-    return 0;
+    return TOK_NULL;
 }
 
-static int is_separator(const char token)
+static bool is_separator(const char token)
 {
     switch(token)
     {
@@ -463,9 +498,9 @@ static int is_separator(const char token)
     case TOK_SEP_DOT:
     case TOK_SEP_CHAR:
     case TOK_SEP_STR:
-        return 1;
+        return TRUE;
     default:
-        return 0;
+        return FALSE;
     }
 }
 

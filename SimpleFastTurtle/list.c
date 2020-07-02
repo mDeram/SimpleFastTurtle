@@ -4,9 +4,9 @@
  *  Linked list library for void pointer data
  */
 
-struct List *list_new()
+List *list_new()
 {
-    struct List *list = malloc(sizeof(struct List));
+    List *list = malloc(sizeof(List));
     if (list == NULL) exit(EXIT_FAILURE);
 
     list->size = 0;
@@ -16,9 +16,9 @@ struct List *list_new()
     return list;
 }
 
-void list_push(struct List *list, void *data)
+void list_push(List *list, void *data)
 {
-    struct ListNode *node = malloc(sizeof(struct ListNode));
+    ListNode *node = malloc(sizeof(ListNode));
     if (node == NULL) exit(EXIT_FAILURE);
 
     node->data = data;
@@ -37,9 +37,9 @@ void list_push(struct List *list, void *data)
     list->size++;
 }
 
-void list_fprintf(struct List *list, FILE *output, void (*callback)(FILE *, void *))
+void list_fprintf(List *list, FILE *output, void (*callback)(FILE *, void *))
 {
-    struct ListNode *node = list->head;
+    ListNode *node = list->head;
     while (node != NULL)
     {
         (*callback)(output, node->data);
@@ -47,29 +47,30 @@ void list_fprintf(struct List *list, FILE *output, void (*callback)(FILE *, void
     }
 }
 
-void list_fprintf_pos(struct List *list, FILE *output, void (*callback)(FILE *, void *, char))
+void list_fprintf_pos(List *list, FILE *output,
+                      void (*callback)(FILE *, void *, ListPos))
 {
     if (list->size == 1)
     {
-        (*callback)(output, list->head->data, LIST_ALL);
+        (*callback)(output, list->head->data, LIST_POS_ALL);
     }
     else
     {
-        struct ListNode *node = list->head;
-        (*callback)(output, node->data, LIST_START);
+        ListNode *node = list->head;
+        (*callback)(output, node->data, LIST_POS_START);
         for (int i = 1; i < list->size-1; i++)
         {
             node = node->next;
-            (*callback)(output, node->data, LIST_INSIDE);
+            (*callback)(output, node->data, LIST_POS_INSIDE);
         }
         node = node->next;
-        (*callback)(output, node->data, LIST_END);
+        (*callback)(output, node->data, LIST_POS_END);
     }
 }
 
-void list_foreach(struct List *list, void (*callback)(void *))
+void list_foreach(List *list, void (*callback)(void *))
 {
-    struct ListNode *node = list->head;
+    ListNode *node = list->head;
     while (node != NULL)
     {
         (*callback)(node->data);
@@ -77,9 +78,9 @@ void list_foreach(struct List *list, void (*callback)(void *))
     }
 }
 
-void list_clear(struct List *list)
+void list_clear(List *list)
 {
-    struct ListNode *node = NULL;
+    ListNode *node = NULL;
     while (list->head != NULL)
     {
         node = list->head;
@@ -90,7 +91,7 @@ void list_clear(struct List *list)
     list->size = 0;
 }
 
-void list_free(struct List *list)
+void list_free(List *list)
 {
     list_clear(list);
     free(list);
@@ -98,9 +99,9 @@ void list_free(struct List *list)
 
 
 
-void list_clear_foreach(struct List *list, void (*callback)(void *))
+void list_clear_foreach(List *list, void (*callback)(void *))
 {
-    struct ListNode *node = NULL;
+    ListNode *node = NULL;
     while (list->head != NULL)
     {
         node = list->head;
@@ -112,7 +113,7 @@ void list_clear_foreach(struct List *list, void (*callback)(void *))
     list->size = 0;
 }
 
-void list_free_foreach(struct List *list, void (*callback)(void *))
+void list_free_foreach(List *list, void (*callback)(void *))
 {
     list_clear_foreach(list, callback);
     free(list);

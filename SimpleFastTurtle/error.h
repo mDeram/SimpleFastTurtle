@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "mwc/forge.h"
+
 #include "token.h"
 
 

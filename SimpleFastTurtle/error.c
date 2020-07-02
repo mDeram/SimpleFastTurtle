@@ -64,11 +64,11 @@ void error_printd(const int error_id, const void *data)
         fprintf(stderr, c_error_list[error_id*2], (char *)data);
         break;
     case 'o':
-        fprintf(stderr, c_error_list[error_id*2], *(unsigned long *)data);
+        fprintf(stderr, c_error_list[error_id*2], *(ulong *)data);
         break;
     case 't':
     {
-        struct TokenNode *node = (struct TokenNode *)data;
+        TokenNode *node = (TokenNode *)data;
         fprintf(stderr, c_error_list[error_id*2], node->token, node->line);
         break;
     }

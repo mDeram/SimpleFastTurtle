@@ -7,99 +7,69 @@
 #include <string.h>
 #include <stddef.h>
 
+#include "mwc/forge.h"
+
 #include "list.h"
 
 
 
+typedef struct TokenNode TokenNode;
+typedef struct Statement Statement;
+typedef struct Expression Expression;
+typedef struct Operator Operator;
+typedef struct Function Function;
+typedef struct ExprArray ExprArray;
+
+
+
 void token_fprintf(FILE *output, void *data);
-struct TokenNode *token_new(const unsigned long int current_line,
-                            const char type,
-                            const char id,
-                            const char *token);
+TokenNode *token_create(const ulong current_line,
+                        const uint8 type,
+                        const uint8 id,
+                        const char *token);
 void token_free(void *data);
 
-struct Statement *statement_new();
+Statement *statement_new();
 void statement_free(void *data);
 
-struct Expression *expression_new();
+Expression *expression_new();
 void expression_free(void *data);
 
-struct Operator *operator_new();
+Operator *operator_new();
 void operator_free(void *data);
 
-struct Function *function_new();
+Function *function_new();
 void function_free(void *data);
 
-struct Array *array_new();
-void array_free(void *data);
+ExprArray *expr_array_new();
+void expr_array_free(void *data);
 
 
 
-struct TokenNode {
-    unsigned long int line;
-    unsigned char type;
-    unsigned char id;
-    char *token;
-};
+typedef enum {
+    EXPR_TYPE_OP,
+    EXPR_TYPE_ID,
+    EXPR_TYPE_LI,
+    EXPR_TYPE_FN,
+    EXPR_TYPE_ARRAY
+} ExprType;
 
+typedef enum {
+    TOK_TYPE_OP,
+    TOK_TYPE_SEP,
+    TOK_TYPE_KEY,
+    TOK_TYPE_LI,
+    TOK_TYPE_ID
+} TokType;
 
-
-struct Statement {
-    struct TokenNode *token;
-    struct List *expressions;
-    struct List *statements;
-};
-
-struct Expression {
-    unsigned char type;
-    union {
-        struct Operator *operator;
-        struct TokenNode *identifier;
-        struct TokenNode *literal;
-        struct Function *function;
-        struct Array *array;
-    };
-};
-
-struct Operator {
-    struct TokenNode *token;
-    struct Expression *left;
-    struct Expression *right;
-};
-
-struct Function {
-    struct TokenNode *identifier;
-    struct List *params;
-};
-
-struct Array {
-    struct TokenNode *identifier;
-    struct Expression *param;
-};
-
-enum {
-    EXPRESSION_TYPE_OP,
-    EXPRESSION_TYPE_ID,
-    EXPRESSION_TYPE_LI,
-    EXPRESSION_TYPE_FN,
-    EXPRESSION_TYPE_ARRAY
-};
-
-
-
-enum {
+typedef enum {
     /*
      *  All the literal number are choosen depending on the space
      *  available in the ascii table, that does not interfere with symbols
      *  (like a-z and A-Z areas and 1 to 30)
      */
-    TOK_TYPE_OP         = 48,
-    TOK_TYPE_SEP        = 49,
-    TOK_TYPE_KEY        = 50,
-    TOK_TYPE_LI         = 51,
-    TOK_TYPE_ID         = 52,
-
-    /*OPerator*/
+    TOK_NULL            = 0,
+/* OPerator */
     TOK_OP_ASIGN        = '=',
     TOK_OP_NOT          = '!',
     TOK_OP_INF          = '<',
@@ -129,8 +99,8 @@ enum {
     TOK_OP_DIV_ASIGN    = 14,   /*  /=  */
     TOK_OP_MOD_ASIGN    = 15,   /*  %=  */
 
-    /*SEParator
-     *
+/* SEParator */
+    /*
      * R=round
      * C=curly
      * S=square
@@ -151,7 +121,7 @@ enum {
     TOK_SEP_CHAR        = '\'',
     TOK_SEP_STR         = '"',
 
-    /*KEYword*/
+/* KEYword */
     TOK_KEY_FOR         = 65,   /* in implementation*/
     TOK_KEY_FLOAT       = 66,
     TOK_KEY_IF          = 67,   /* in implementation*/
@@ -175,12 +145,57 @@ enum {
     TOK_KEY_VAR         = 85,   /* in implementation*/
     TOK_KEY_NULL        = 86,   /* in implementation*/
 
-    /*LIteral*/
+/* LIteral */
     TOK_LI_NUMBER       = 97,
     TOK_LI_BOOL         = 98,
     TOK_LI_STRING       = 99,
 
+/* IDentifier */
     TOK_ID              = 100,
+} TokId;
+
+
+
+struct TokenNode {
+    ulong line;
+    TokType type;
+    TokId id;
+    char *token;
 };
+
+struct Statement {
+    TokenNode *token;
+    List *expressions;
+    List *statements;
+};
+
+struct Expression {
+    ExprType type;
+    union {
+        Operator *operator;
+        TokenNode *identifier;
+        TokenNode *literal;
+        Function *function;
+        ExprArray *expr_array;
+    };
+};
+
+struct Operator {
+    TokenNode *token;
+    Expression *left;
+    Expression *right;
+};
+
+struct Function {
+    TokenNode *identifier;
+    List *params;
+};
+
+struct ExprArray {
+    TokenNode *identifier;
+    Expression *param;
+};
+
+
 
 #endif
