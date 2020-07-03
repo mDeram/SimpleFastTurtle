@@ -37,11 +37,11 @@ static bool expression_is_token_valid(TokenNode *token);
 static bool expression_can_token_follow(TokenNode *last2,
                                         TokenNode *last1,
                                         TokenNode *cur);
-static short bracket_end_to_start(short bracket);
+static TokId bracket_end_to_start(TokId bracket);
 static TokenNode **expression_to_expr_array(ListNode *copy_node,
                                        uint start, uint stop);
 static void find_lowest_precedence(TokenNode **expr_block, uint start, uint stop,
-                                   short *lowest_precedence, uint *index);
+                                   uint8 *lowest_precedence, uint *index);
 static Expression *parse_nested_expression(TokenNode **expr_block,
                                            uint start, uint stop);
 static void parse_function_params(List *params, TokenNode **expr_block,
@@ -57,6 +57,7 @@ static Boundary *boundary_create(uint start, uint stop);
 void parser_process(List *tree_token, List *tokens,
                     int option_save, int option_print)
 {
+    //File line start at 1 so using 0 show that it does not come from the file
     token_null = token_create(0, TOK_TYPE_KEY, TOK_KEY_NULL, "null");
 
     parse(tree_token, tokens);
@@ -141,13 +142,9 @@ static void parse_statement_block(ParserNode *current, Statement *statement)
     ListNode *last_node = current->node;
 
     if (current->token->id != TOK_SEP_CBS)
-    {
         statement_inline(current, statement);
-    }
     else
-    {
         statement_block(current, statement);
-    }
 
     if (last_node == current->node)
         error_printd(ERROR_PARSER_INVALID_STATEMENT, &current->token->line);
@@ -251,7 +248,7 @@ static Statement *parse_statement(ParserNode *current)
             statement_start(current, statement);
             parse_expression_block(current, statement->expressions);
 
-            if (statement->expressions->size == 0)
+            if (!statement->expressions->size)
             {
                 error_printd(ERROR_PARSER_INVALID_VAR_ASSIGNMENT,
                              &statement->token->line);
@@ -271,14 +268,17 @@ static Statement *parse_statement(ParserNode *current)
             error_printd(ERROR_PARSER_NOT_HANDLED_KEYWORD, current->token);
         }
     }
+    else if (current->token->id == TOK_SEP_CBS)
+    {
+        parse_statement_block(current, statement);
+    }
     else if (expression_is_token_valid(current->token))
     {
-        statement->token = NULL;
         parse_expression_block(current, statement->expressions);
     }
     else
     {
-        error_printd(ERROR_PARSER_INVALID_STATEMENT, &statement->token->line);
+        error_printd(ERROR_PARSER_INVALID_STATEMENT, &current->token->line);
     }
 
     return statement;
@@ -305,7 +305,7 @@ static bool expression_can_token_follow(TokenNode *last2,
     if (last1 == NULL)
         return TRUE;
 
-    /* are last1 and cur both id or li */
+    /* are last1 and cur both identifier or literal */
     if ((last1->type == TOK_TYPE_ID || last1->type == TOK_TYPE_LI)
      &&   (cur->type == TOK_TYPE_ID ||   cur->type == TOK_TYPE_LI))
         return FALSE;
@@ -313,7 +313,12 @@ static bool expression_can_token_follow(TokenNode *last2,
     if (last2 == NULL)
         return TRUE;
 
-    if (last1->id == TOK_OP_INCR || last1->id == TOK_OP_DECR)
+    if (last1->id == TOK_OP_INCR
+     || last1->id == TOK_OP_DECR
+     || last1->id == TOK_OP_NOT
+     || last1->id == TOK_OP_OR
+     || last1->id == TOK_OP_AND
+     || last1->id == TOK_OP_XOR)
         return !(
                     (cur->type == TOK_TYPE_ID
                   || cur->type == TOK_TYPE_LI
@@ -327,7 +332,7 @@ static bool expression_can_token_follow(TokenNode *last2,
     return TRUE;
 }
 
-static short bracket_end_to_start(short bracket)
+static TokId bracket_end_to_start(TokId bracket)
 {
     switch (bracket)
     {
@@ -336,7 +341,7 @@ static short bracket_end_to_start(short bracket)
     case TOK_SEP_SBE:
         return TOK_SEP_SBS;
     default:
-        return 0;
+        return TOK_NULL;
     }
 }
 
@@ -357,8 +362,8 @@ static List *expression_to_boundary_list(ParserNode *current)
     while (expression_is_token_valid(current->token)
         && expression_can_token_follow(last2, last1, current->token))
     {
-        if (current->token->id == TOK_SEP_RBS
-         || current->token->id == TOK_SEP_SBS)
+        if      (current->token->id == TOK_SEP_RBS
+              || current->token->id == TOK_SEP_SBS)
         {
             stack[stack_index] = current->token->id;
             stack_index++;
@@ -369,8 +374,7 @@ static List *expression_to_boundary_list(ParserNode *current)
             stack_index--;
             if (stack_index < 0)
                 break;
-            if (stack[stack_index]
-                != bracket_end_to_start(current->token->id))
+            if (stack[stack_index] != bracket_end_to_start(current->token->id))
                 break;
         }
         else if (current->token->id == TOK_SEP_COMMA)
@@ -455,7 +459,7 @@ static List *expression_to_boundary_list(ParserNode *current)
 
 static TokenNode **expression_to_expr_array(ListNode *node, uint start, uint stop)
 {
-    TokenNode **expr_block = malloc(sizeof(TokenNode *)*stop);
+    TokenNode **expr_block = malloc(sizeof(TokenNode *)*(stop + 1));
     if (expr_block == NULL) exit(EXIT_FAILURE);
 
     for (int i = 0; i <= stop; i++)
@@ -484,8 +488,8 @@ static void parse_expression_block(ParserNode *current, List *s_list)
     if (boundaries == NULL || !boundaries->size)
         error_printd(ERROR_PARSER_INVALID_EXPRESSION, &tmp_line);
 
-    unsigned int start = ((Boundary *)boundaries->head->data)->start;
-    unsigned int stop  = ((Boundary *)boundaries->tail->data)->stop;
+    uint start = ((Boundary *)boundaries->head->data)->start;
+    uint stop  = ((Boundary *)boundaries->tail->data)->stop;
     TokenNode **expr_block = expression_to_expr_array(copy_node, start, stop);
 
     list_foreach_(boundaries, node)
@@ -503,7 +507,7 @@ static void parse_expression_block(ParserNode *current, List *s_list)
 }
 
 static void find_lowest_precedence(TokenNode **expr_block, uint start, uint stop,
-                                   short *lowest_precedence, uint *index)
+                                   uint8 *lowest_precedence, uint *index)
 {
     uint bracket_stack = 0;
     for (uint i = start; i <= stop; i++)
@@ -549,7 +553,7 @@ static Expression *parse_nested_expression(TokenNode **expr_block,
 
     remove_useless_rb(expr_block, &start, &stop);
 
-    short lowest_precedence = 100;
+    uint8 lowest_precedence = 100;
     uint lowest_precedence_index = 0;
 
     find_lowest_precedence(expr_block, start, stop,
@@ -561,7 +565,7 @@ static Expression *parse_nested_expression(TokenNode **expr_block,
         expression->operator = operator_new();
         expression->operator->token = expr_block[lowest_precedence_index];
 
-        if (lowest_precedence_index-1 < start)
+        if (lowest_precedence_index - 1 < start)
         {
             expression->operator->left = expression_new();
             expression->operator->left->type = EXPR_TYPE_LI;
@@ -570,10 +574,12 @@ static Expression *parse_nested_expression(TokenNode **expr_block,
         else
         {
             expression->operator->left
-                    = parse_nested_expression(expr_block, start, lowest_precedence_index-1);
+                    = parse_nested_expression(expr_block,
+                                              start,
+                                              lowest_precedence_index - 1);
         }
 
-        if (lowest_precedence_index+1 > stop)
+        if (lowest_precedence_index + 1 > stop)
         {
             expression->operator->right = expression_new();
             expression->operator->right->type = EXPR_TYPE_LI;
@@ -582,7 +588,9 @@ static Expression *parse_nested_expression(TokenNode **expr_block,
         else
         {
             expression->operator->right
-                    = parse_nested_expression(expr_block, lowest_precedence_index+1, stop);
+                    = parse_nested_expression(expr_block,
+                                              lowest_precedence_index + 1,
+                                              stop);
         }
     }
     else if (start == stop) /* only one token between the boundaries */
@@ -600,7 +608,8 @@ static Expression *parse_nested_expression(TokenNode **expr_block,
         }
         else
         {
-            error_printd(ERROR_PARSER_INVALID_EXPRESSION, &expr_block[start]->line);
+            error_printd(ERROR_PARSER_INVALID_EXPRESSION,
+                         &expr_block[start]->line);
         }
     }
     else if (is_function(expr_block, start, stop))
@@ -616,8 +625,9 @@ static Expression *parse_nested_expression(TokenNode **expr_block,
         expression->type = EXPR_TYPE_ARRAY;
         expression->expr_array = expr_array_new();
         expression->expr_array->identifier = expr_block[start];
-        expression->expr_array->param
-                = parse_nested_expression(expr_block, start+2, stop-1);
+        expression->expr_array->param = parse_nested_expression(expr_block,
+                                                                start+2,
+                                                                stop-1);
     }
     else
     {
@@ -691,8 +701,9 @@ static void remove_useless_rb(TokenNode **expr_block, uint *start, uint *stop)
     int bracket_stack = 0;
     int min = *start;
     int max = *stop;
-    while(expr_block[min]->id == TOK_SEP_RBS
-       && expr_block[max]->id == TOK_SEP_RBE)
+
+    while (expr_block[min]->id == TOK_SEP_RBS
+        && expr_block[max]->id == TOK_SEP_RBE)
     {
         lowest_inside++;
         bracket_stack++;
@@ -700,7 +711,7 @@ static void remove_useless_rb(TokenNode **expr_block, uint *start, uint *stop)
         max--;
     }
 
-    while(min <= max)
+    while (min <= max)
     {
         if (!lowest_inside)
             return;
@@ -724,7 +735,6 @@ static void remove_useless_rb(TokenNode **expr_block, uint *start, uint *stop)
 
 static TokenNode *get_token_null()
 {
-    //File line start at one so using 0 show that the parser added it to the code
     return token_null;
 }
 

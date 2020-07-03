@@ -43,11 +43,6 @@ static const char *c_error_list[100] = {
 
 
 
-static void print_id(const int error_id)
-{
-    fprintf(stderr, "ERROR (id%d): ", error_id);
-}
-
 void error_print(const int error_id)
 {
     print_id(error_id);
@@ -74,4 +69,9 @@ void error_printd(const int error_id, const void *data)
     }
     }
     exit(EXIT_FAILURE);
+}
+
+static void print_id(const int error_id)
+{
+    fprintf(stderr, "ERROR (id%d): ", error_id);
 }
