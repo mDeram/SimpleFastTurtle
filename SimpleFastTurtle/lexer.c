@@ -36,7 +36,7 @@ static void general_test(List *tokens, LexerToken *current);
 static TokId get_literal(const char token[]);
 static TokId get_keyword(const char token[]);
 static bool is_operator(const char token);
-static TokId get_double_operator(TokenNode *last, char op2);
+static TokId get_double_operator(ListNode *last, char op2);
 static bool is_separator(const char token);
 static char escape_to_char(const char c);
 
@@ -61,6 +61,12 @@ void lexer_process(List *tokens, char *file_name,
 void lexer_free(List *tokens)
 {
     list_free_foreach(tokens, token_free);
+}
+
+static void print_current(LexerToken current)
+{
+    printf("line : %lu index : %d c : %c token %s\n",
+           current.line, current.index, current.c, current.token);
 }
 
 static void handle_args(List *tokens,
@@ -124,7 +130,7 @@ static void tokenize_core(FILE *f, List *tokens, LexerToken *current)
     if (is_operator(current->c))
     {
         general_test(tokens, current);
-
+        
         current->token[0] = current->c;
         current->token[1] = '\0';
 
@@ -161,12 +167,12 @@ static void handle_operator(List *tokens, LexerToken *current)
      *  If the last token is a simple operator
      *  Delete it and create a double operator
      */
-    TokenNode *last = (TokenNode *)tokens->tail->data;
-    TokId id = get_double_operator(last, current->token[0]);
+    TokId id = get_double_operator(tokens->tail, current->token[0]);
     if (id != TOK_NULL)
     {
-        current->token[0] = last->token[0];
+        TokenNode *last = (TokenNode *)tokens->tail->data;
         current->token[1] = current->token[0];
+        current->token[0] = last->token[0];
         current->token[2] = '\0';
         token_free(last);
 
@@ -431,15 +437,20 @@ static bool is_operator(const char token)
     }
 }
 
-static TokId get_double_operator(TokenNode *last, char op2)
+static TokId get_double_operator(ListNode *last, char op2)
 {
+    if (last == NULL)
+        return TOK_NULL;
+    
+    TokenNode *last_node = (TokenNode *)last->data;
+
     /* is last token simple operator */
-    if (!(last->type == TOK_TYPE_OP && last->id > 20))
+    if (!(last_node->type == TOK_TYPE_OP && last_node->id > 20))
         return TOK_NULL;
     /*
      * Evaluating op2 first reduce the number of cases
      */
-    char op1 = last->token[0];
+    char op1 = last_node->token[0];
     if (op2 == op1)
     {
         switch(op1)

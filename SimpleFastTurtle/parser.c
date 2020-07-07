@@ -34,12 +34,13 @@ static void statement_block(ParserNode *current, Statement *statement);
 static void statement_start(ParserNode *current, Statement *statement);
 static Statement *parse_statement(ParserNode *current);
 static bool expression_is_token_valid(TokenNode *token);
+static bool operator_has_single_operande(TokId id);
 static bool expression_can_token_follow(TokenNode *last2,
                                         TokenNode *last1,
                                         TokenNode *cur);
 static TokId bracket_end_to_start(TokId bracket);
 static TokenNode **expression_to_expr_array(ListNode *copy_node,
-                                       uint start, uint stop);
+                                            uint start, uint stop);
 static void find_lowest_precedence(TokenNode **expr_block, uint start, uint stop,
                                    uint8 *lowest_precedence, uint *index);
 static Expression *parse_nested_expression(TokenNode **expr_block,
@@ -95,6 +96,7 @@ static void parse(List *tree_token, List *tokens)
     ParserNode current = {NULL, NULL};
     current.node = tokens->head;
     current.token = (TokenNode *)tokens->head->data;
+    printf("TOK: %s\n", current.token->token);
 
     ListNode *last_node = NULL;
 
@@ -116,12 +118,12 @@ static void parse(List *tree_token, List *tokens)
 
 static int next_node(ParserNode *current)
 {
-    printf("ID: %d\n", current->token->id);
     current->node = current->node->next;
     if (current->node == NULL)
         return 0;
 
     current->token = (TokenNode *)current->node->data;
+    printf("TOK: %s\n", current->token->token);
     return 1;
 }
 
@@ -298,6 +300,16 @@ static bool expression_is_token_valid(TokenNode *token)
          || token->id   == TOK_KEY_NULL);
 }
 
+static bool operator_has_single_operande(TokId id)
+{
+    return (id == TOK_OP_INCR
+         || id == TOK_OP_DECR
+         || id == TOK_OP_NOT
+         || id == TOK_OP_OR
+         || id == TOK_OP_AND
+         || id == TOK_OP_XOR);
+}
+
 static bool expression_can_token_follow(TokenNode *last2,
                                         TokenNode *last1,
                                         TokenNode *cur)
@@ -305,20 +317,15 @@ static bool expression_can_token_follow(TokenNode *last2,
     if (last1 == NULL)
         return TRUE;
 
-    /* are last1 and cur both identifier or literal */
-    if ((last1->type == TOK_TYPE_ID || last1->type == TOK_TYPE_LI)
-     &&   (cur->type == TOK_TYPE_ID ||   cur->type == TOK_TYPE_LI))
+    /* are last1 and cur both identifier or literal or keyword*/
+    if ((last1->type == TOK_TYPE_ID || last1->type == TOK_TYPE_LI || last1->type == TOK_TYPE_KEY)
+     &&   (cur->type == TOK_TYPE_ID ||   cur->type == TOK_TYPE_LI ||   cur->type == TOK_TYPE_KEY))
         return FALSE;
 
     if (last2 == NULL)
         return TRUE;
 
-    if (last1->id == TOK_OP_INCR
-     || last1->id == TOK_OP_DECR
-     || last1->id == TOK_OP_NOT
-     || last1->id == TOK_OP_OR
-     || last1->id == TOK_OP_AND
-     || last1->id == TOK_OP_XOR)
+    if (operator_has_single_operande(last1->id))
         return !(
                     (cur->type == TOK_TYPE_ID
                   || cur->type == TOK_TYPE_LI
@@ -420,6 +427,7 @@ static List *expression_to_boundary_list(ParserNode *current)
             }
             //else the comma is included in the expression
         }
+        size++;
 
         last2 = last1;
         last1 = current->token;
@@ -432,7 +440,6 @@ static List *expression_to_boundary_list(ParserNode *current)
             stack = realloc(stack, sizeof(uint)*stack_size);
             if (stack == NULL) exit(EXIT_FAILURE);
         }
-        size++;
     }
 
     Boundary *new_boundary = NULL;
@@ -467,11 +474,11 @@ static TokenNode **expression_to_expr_array(ListNode *node, uint start, uint sto
         if (i >= start)
         {
             expr_block[i] = (TokenNode *)node->data;
-            //printf("%s", ((TokenNode*)node->data)->token);
+            printf("%s", ((TokenNode*)node->data)->token);
         }
         node = node->next;
     }
-    //printf("\n");
+    printf("\n");
     return expr_block;
 }
 
@@ -565,7 +572,7 @@ static Expression *parse_nested_expression(TokenNode **expr_block,
         expression->operator = operator_new();
         expression->operator->token = expr_block[lowest_precedence_index];
 
-        if (lowest_precedence_index - 1 < start)
+        if (lowest_precedence_index == start)
         {
             expression->operator->left = expression_new();
             expression->operator->left->type = EXPR_TYPE_LI;
@@ -579,7 +586,7 @@ static Expression *parse_nested_expression(TokenNode **expr_block,
                                               lowest_precedence_index - 1);
         }
 
-        if (lowest_precedence_index + 1 > stop)
+        if (lowest_precedence_index == stop)
         {
             expression->operator->right = expression_new();
             expression->operator->right->type = EXPR_TYPE_LI;
