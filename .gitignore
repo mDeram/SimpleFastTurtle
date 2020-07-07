@@ -10,6 +10,7 @@ obj/
 *.p
 code_save/
 *.sublime-workspace
+*.swp
 
 # Compiled source #
 ###################
