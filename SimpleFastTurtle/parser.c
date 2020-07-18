@@ -369,6 +369,7 @@ static List *expression_to_boundary_list(ParserNode *current)
     while (expression_is_token_valid(current->token)
         && expression_can_token_follow(last2, last1, current->token))
     {
+        size++;
         if      (current->token->id == TOK_SEP_RBS
               || current->token->id == TOK_SEP_SBS)
         {
@@ -380,9 +381,9 @@ static List *expression_to_boundary_list(ParserNode *current)
         {
             stack_index--;
             if (stack_index < 0)
-                break;
+                return NULL;
             if (stack[stack_index] != bracket_end_to_start(current->token->id))
-                break;
+                return NULL;
         }
         else if (current->token->id == TOK_SEP_COMMA)
         {
@@ -395,39 +396,35 @@ static List *expression_to_boundary_list(ParserNode *current)
                     return NULL;
 
                 is_inside_rb = FALSE;
-                Boundary *new_boundary = NULL;
 
+                Boundary *new_boundary = NULL;
                 if (!boundaries->size)
                 {
-                    new_boundary = boundary_create(0, size);
+                    new_boundary = boundary_create(0, size - 1);
                 }
                 else
                 {
                     uint stop = ((Boundary*)boundaries->tail->data)->stop;
-                    new_boundary = boundary_create(stop + 2, size);
+                    new_boundary = boundary_create(stop + 2, size - 1);
                 }
-
                 list_push(boundaries, new_boundary);
             }
             else if (stack_index == 1 && is_inside_rb)
             {
                 Boundary *new_boundary = NULL;
-
                 if (!boundaries->size)
                 {
-                    new_boundary = boundary_create(1, size - is_inside_rb);
+                    new_boundary = boundary_create(1, size - 1 - is_inside_rb);
                 }
                 else
                 {
                     uint stop = ((Boundary*)boundaries->tail->data)->stop;
-                    new_boundary = boundary_create(stop + 2, size - is_inside_rb);
+                    new_boundary = boundary_create(stop + 2, size - 1 - is_inside_rb);
                 }
-
                 list_push(boundaries, new_boundary);
             }
             //else the comma is included in the expression
         }
-        size++;
 
         last2 = last1;
         last1 = current->token;
@@ -442,8 +439,10 @@ static List *expression_to_boundary_list(ParserNode *current)
         }
     }
 
-    Boundary *new_boundary = NULL;
+    if (stack_index)
+        return NULL;
 
+    Boundary *new_boundary = NULL;
     if (!boundaries->size)
     {
         new_boundary = boundary_create(0, size - 1);
@@ -453,15 +452,10 @@ static List *expression_to_boundary_list(ParserNode *current)
         uint stop = ((Boundary *)boundaries->tail->data)->stop;
         new_boundary = boundary_create(stop + 2, size - 1 - is_inside_rb);
     }
-
     list_push(boundaries, new_boundary);
 
     free(stack);
-
-    if (stack_index)
-        return NULL;
-    else
-        return boundaries;
+    return boundaries;
 }
 
 static TokenNode **expression_to_expr_array(ListNode *node, uint start, uint stop)
