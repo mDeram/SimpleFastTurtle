@@ -359,7 +359,7 @@ static List *expression_to_boundary_list(ParserNode *current)
     bool is_inside_rb = (current->token->id == TOK_SEP_RBS);
     
     size_t stack_index = 0;
-    size_t stack_size  = 16; /*If 16 is to small, stack_size *= 2*/
+    size_t stack_size  = 16; /*If 16 is too small, stack_size *= 2*/
     uchar *stack       = malloc(sizeof(uchar)*stack_size);
     if (stack == NULL) exit(EXIT_FAILURE);
 
@@ -389,8 +389,8 @@ static List *expression_to_boundary_list(ParserNode *current)
         {
             if (!stack_index)
             {
-                /* Some expressions are inside round bracket but it's not the
-                 * case anymore: raising error
+                /* Some expressions were inside round bracket but not anymore : 
+                 * raising error
                  */
                 if (is_inside_rb && boundaries->size)
                     return NULL;

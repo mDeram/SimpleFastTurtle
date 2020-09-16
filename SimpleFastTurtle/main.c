@@ -27,7 +27,8 @@ int main(int argc, char *argv[])
                                       option_lexer_print_size);
     parser_process(tree_token, tokens, option_parser_save,
                                        option_parser_print);
-
+    //compiler_process(tree_token, tokens);    
+    
     parser_free(tree_token);
     lexer_free(tokens);
 

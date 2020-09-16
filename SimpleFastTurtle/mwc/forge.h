@@ -22,7 +22,7 @@ typedef unsigned char bool;
 #endif
 
 
-
+/* Can be false on some system */
 typedef signed   char  int8;
 typedef unsigned char  uint8;
 typedef unsigned char  uchar;
