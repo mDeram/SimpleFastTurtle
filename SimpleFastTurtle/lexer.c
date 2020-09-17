@@ -7,6 +7,7 @@
  */
 
 #define LEXER_TOKEN_LENGTH 91
+#define KEYWORD_NUMBER 11
 
 
 
@@ -17,6 +18,14 @@ typedef struct {
     char token[LEXER_TOKEN_LENGTH];
 } LexerToken;
 
+typedef struct {
+    TokId id;
+    char *name;
+} KeywordLookup;
+
+
+
+static const KeywordLookup keyword_list[KEYWORD_NUMBER];
 
 
 
@@ -36,6 +45,7 @@ static void general_test(List *tokens, LexerToken *current);
 static TokId get_literal(const char token[]);
 static TokId get_keyword(const char token[]);
 static bool is_operator(const char token);
+static bool is_token_simple_operator(const TokenNode node);
 static TokId get_double_operator(ListNode *last, char op2);
 static bool is_separator(const char token);
 static char escape_to_char(const char c);
@@ -61,12 +71,6 @@ void lexer_process(List *tokens, char *file_name,
 void lexer_free(List *tokens)
 {
     list_free_foreach(tokens, token_free);
-}
-
-static void print_current(LexerToken current)
-{
-    printf("line : %lu index : %d c : %c token %s\n",
-           current.line, current.index, current.c, current.token);
 }
 
 static void handle_args(List *tokens,
@@ -171,9 +175,12 @@ static void handle_operator(List *tokens, LexerToken *current)
     if (id != TOK_NULL)
     {
         TokenNode *last = (TokenNode *)tokens->tail->data;
-        current->token[1] = current->token[0];
+
+        char tmp = current->token[0];
         current->token[0] = last->token[0];
+        current->token[1] = tmp;
         current->token[2] = '\0';
+
         token_free(last);
 
         TokenNode *new_token = token_create(current->line,
@@ -279,8 +286,7 @@ static bool handle_comments(FILE *f, LexerToken *current)
         handle_inline_comment(f, current);
         return TRUE;
     }
-
-    if (next_char == '*')
+    else if (next_char == '*')
     {
         handle_block_comment(f, current);
         return TRUE;
@@ -329,9 +335,7 @@ static TokId get_literal(const char token[])
     char first_char = token[0];
     if (first_char >= '0' && first_char <= '9')
         return TOK_LI_NUMBER;
-    //checking 't' and 'f' first for a bit of speed
-    if ((first_char == 't' && !strcmp("true", token))
-     || (first_char == 'f' && !strcmp("false", token)))
+    if (!strcmp("true", token) || !strcmp("false", token))
         return TOK_LI_BOOL;
     return TOK_NULL;
 }
@@ -341,77 +345,12 @@ static TokId get_keyword(const char token[])
     if (token[0] < 'a' && token[0] > 'w')
         return TOK_NULL;
 
-    switch(token[0])
+    for (int i = 0; i < KEYWORD_NUMBER; i++)
     {
-    case 'f':
-        if (!strcmp("for", token))
-            return TOK_KEY_FOR;
-        if (!strcmp("float", token))
-            return TOK_KEY_FLOAT;
-        if (!strcmp("fn", token))
-            return TOK_KEY_FN;
-        break;
-    case 'v':
-        if (!strcmp("var", token))
-            return TOK_KEY_VAR;
-        break;
-    case 'i':
-        if (!strcmp("if", token))
-            return TOK_KEY_IF;
-        if (!strcmp("int", token))
-            return TOK_KEY_INT;
-        break;
-    case 'w':
-        if (!strcmp("while", token))
-            return TOK_KEY_WHILE;
-        break;
-    case 'e':
-        if (!strcmp("else", token))
-            return TOK_KEY_ELSE;
-        if (!strcmp("elif", token))
-            return TOK_KEY_ELIF;
-        break;
-    case 'b':
-        if (!strcmp("bool", token))
-            return TOK_KEY_BOOL;
-        if (!strcmp("break", token))
-            return TOK_KEY_BREAK;
-        break;
-    case 'c':
-        if (!strcmp("char", token))
-            return TOK_KEY_CHAR;
-        if (!strcmp("case", token))
-            return TOK_KEY_CASE;
-        if (!strcmp("class", token))
-            return TOK_KEY_CLASS;
-        break;
-    case 'r':
-        if (!strcmp("return", token))
-            return TOK_KEY_RETURN;
-        break;
-    case 's':
-        if (!strcmp("str", token))
-            return TOK_KEY_STR;
-        if (!strcmp("switch", token))
-            return TOK_KEY_SWITCH;
-        if (!strcmp("static", token))
-            return TOK_KEY_STATIC;
-        break;
-    case 'd':
-        if (!strcmp("default", token))
-            return TOK_KEY_DEFAULT;
-        break;
-    case 'a':
-        if (!strcmp("assert", token))
-            return TOK_KEY_ASSERT;
-        break;
-    case 'n':
-        if (!strcmp("new", token))
-            return TOK_KEY_NEW;
-        if (!strcmp("null", token))
-            return TOK_KEY_NULL;
-        break;
+        if (!strcmp(keyword_list[i].name, token))
+            return keyword_list[i].id;
     }
+
     return TOK_NULL;
 }
 
@@ -437,20 +376,24 @@ static bool is_operator(const char token)
     }
 }
 
+static bool is_token_simple_operator(const TokenNode node)
+{
+    return node.type == TOK_TYPE_OP
+       && (node.id < MIN_TOK_OP || node.id > MAX_TOK_OP);
+}
+
 static TokId get_double_operator(ListNode *last, char op2)
 {
     if (last == NULL)
         return TOK_NULL;
     
-    TokenNode *last_node = (TokenNode *)last->data;
+    TokenNode last_node = *(TokenNode *)last->data;
 
-    /* is last token simple operator */
-    if (!(last_node->type == TOK_TYPE_OP && last_node->id > 20))
+    if (!is_token_simple_operator(last_node))
         return TOK_NULL;
-    /*
-     * Evaluating op2 first reduce the number of cases
-     */
-    char op1 = last_node->token[0];
+    
+    /* Evaluating op2 first reduce the number of cases */
+    char op1 = last_node.token[0];
     if (op2 == op1)
     {
         switch(op1)
@@ -515,7 +458,7 @@ static bool is_separator(const char token)
     }
 }
 
-/*  Convert "\t" to '\t'*/
+/*  Convert "\x" to '\x' if needed*/
 static char escape_to_char(const char c)
 {
     switch(c)
@@ -538,3 +481,17 @@ static char escape_to_char(const char c)
         return c;
     }
 }
+
+static const KeywordLookup keyword_list[KEYWORD_NUMBER] = {
+    {.id = TOK_KEY_FOR,     .name = "for"},
+    {.id = TOK_KEY_IF,      .name = "if"},
+    {.id = TOK_KEY_WHILE,   .name = "while"},
+    {.id = TOK_KEY_ELSE,    .name = "else"},
+    {.id = TOK_KEY_BREAK,   .name = "break"},
+    {.id = TOK_KEY_RETURN,  .name = "return"},
+    {.id = TOK_KEY_ASSERT,  .name = "assert"},
+    {.id = TOK_KEY_ELIF,    .name = "elif"},
+    {.id = TOK_KEY_FN,      .name = "fn"},
+    {.id = TOK_KEY_VAR,     .name = "var"},
+    {.id = TOK_KEY_NULL,    .name = "null"},
+};

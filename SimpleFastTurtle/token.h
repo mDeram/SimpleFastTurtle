@@ -62,6 +62,7 @@ typedef enum {
     TOK_TYPE_ID
 } TokType;
 
+/* TODO I don't need to put default value myself */
 typedef enum {
     /*
      *  All the literal number are choosen depending on the space
@@ -83,21 +84,23 @@ typedef enum {
     TOK_OP_DIV          = '/',
     TOK_OP_MOD          = '%',
 
-    TOK_OP_INCR         = 1,    /*  ++  */
-    TOK_OP_DECR         = 2,    /*  --  */
-    TOK_OP_EXPO         = 3,    /*  **  */
-    TOK_OP_SQRT         = 4,    /*  //  */
-    TOK_OP_EQUAL        = 5,    /*  ==  */
-    TOK_OP_NOT_EQUAL    = 6,    /*  !=  */
-    TOK_OP_INF_EQUAL    = 7,    /*  <=  */
-    TOK_OP_SUP_EQUAL    = 8,    /*  >=  */
-    TOK_OP_LOGIC_AND    = 9,    /*  &&  */
-    TOK_OP_LOGIC_OR     = 10,   /*  ||  */
-    TOK_OP_ADD_ASIGN    = 11,   /*  +=  */
-    TOK_OP_SUB_ASIGN    = 12,   /*  -=  */
-    TOK_OP_BY_ASIGN     = 13,   /*  *=  */
-    TOK_OP_DIV_ASIGN    = 14,   /*  /=  */
-    TOK_OP_MOD_ASIGN    = 15,   /*  %=  */
+    MIN_TOK_OP          = 1,    /*------*/
+    TOK_OP_INCR         = 2,    /*  ++  */
+    TOK_OP_DECR         = 3,    /*  --  */
+    TOK_OP_EXPO         = 4,    /*  **  */
+    TOK_OP_SQRT         = 5,    /*  //  */
+    TOK_OP_EQUAL        = 6,    /*  ==  */
+    TOK_OP_NOT_EQUAL    = 7,    /*  !=  */
+    TOK_OP_INF_EQUAL    = 8,    /*  <=  */
+    TOK_OP_SUP_EQUAL    = 9,    /*  >=  */
+    TOK_OP_LOGIC_AND    = 10,    /*  &&  */
+    TOK_OP_LOGIC_OR     = 11,   /*  ||  */
+    TOK_OP_ADD_ASIGN    = 12,   /*  +=  */
+    TOK_OP_SUB_ASIGN    = 13,   /*  -=  */
+    TOK_OP_BY_ASIGN     = 14,   /*  *=  */
+    TOK_OP_DIV_ASIGN    = 15,   /*  /=  */
+    TOK_OP_MOD_ASIGN    = 16,   /*  %=  */
+    MAX_TOK_OP          = 17,   /*------*/
 
 /* SEParator */
     /*
@@ -123,27 +126,16 @@ typedef enum {
 
 /* KEYword */
     TOK_KEY_FOR         = 65,   /* in implementation*/
-    TOK_KEY_FLOAT       = 66,
-    TOK_KEY_IF          = 67,   /* in implementation*/
-    TOK_KEY_INT         = 68,
-    TOK_KEY_WHILE       = 69,   /* in implementation*/
-    TOK_KEY_ELSE        = 70,   /* in implementation*/
-    TOK_KEY_BOOL        = 71,
-    TOK_KEY_BREAK       = 72,   /* in implementation*/
-    TOK_KEY_CHAR        = 73,
-    TOK_KEY_RETURN      = 74,   /* in implementation*/
-    TOK_KEY_STR         = 75,
-    TOK_KEY_SWITCH      = 76,
-    TOK_KEY_STATIC      = 77,
-    TOK_KEY_DEFAULT     = 78,
-    TOK_KEY_CASE        = 79,
-    TOK_KEY_ASSERT      = 80,
-    TOK_KEY_ELIF        = 81,   /* in implementation*/
-    TOK_KEY_NEW         = 82,
-    TOK_KEY_CLASS       = 83,
-    TOK_KEY_FN          = 84,   /* in implementation*/
-    TOK_KEY_VAR         = 85,   /* in implementation*/
-    TOK_KEY_NULL        = 86,   /* in implementation*/
+    TOK_KEY_IF          = 66,   /* in implementation*/
+    TOK_KEY_WHILE       = 67,   /* in implementation*/
+    TOK_KEY_ELSE        = 68,   /* in implementation*/
+    TOK_KEY_BREAK       = 69,   /* in implementation*/
+    TOK_KEY_RETURN      = 70,   /* in implementation*/
+    TOK_KEY_ASSERT      = 71,
+    TOK_KEY_ELIF        = 72,   /* in implementation*/
+    TOK_KEY_FN          = 73,   /* in implementation*/
+    TOK_KEY_VAR         = 74,   /* in implementation*/
+    TOK_KEY_NULL        = 75,   /* in implementation*/
 
 /* LIteral */
     TOK_LI_NUMBER       = 97,

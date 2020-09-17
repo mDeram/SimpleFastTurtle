@@ -32,6 +32,9 @@ static void parse_statement_block(ParserNode *current, Statement *statement);
 static void statement_inline(ParserNode *current, Statement *statement);
 static void statement_block(ParserNode *current, Statement *statement);
 static void statement_start(ParserNode *current, Statement *statement);
+static void statement_start_with_expression(ParserNode *current,
+                                            Statement *statement);
+static void parse_statement_keyword(ParserNode *current, Statement *statement);
 static Statement *parse_statement(ParserNode *current);
 static bool expression_is_token_valid(TokenNode *token);
 static bool operator_has_single_operande(TokId id);
@@ -200,88 +203,87 @@ static void statement_start(ParserNode *current, Statement *statement)
     }
 }
 
+static void statement_start_with_expression(ParserNode *current,
+                                            Statement *statement)
+{
+    statement_start(current, statement);
+    parse_expression_block(current, statement->expressions);
+}
+
+static void parse_statement_keyword(ParserNode *current, Statement *statement)
+{
+    switch (current->token->id)
+    {
+    case TOK_KEY_FOR:
+    case TOK_KEY_WHILE:
+    case TOK_KEY_IF:
+    case TOK_KEY_ELIF:
+        statement_start_with_expression(current, statement);
+        if (!statement->expressions->size)
+        {
+            error_printd(ERROR_PARSER_INVALID_NUMBER_PARAMETERS,
+                         &statement->token->line);
+        }
+
+        parse_statement_block(current, statement);
+        break;
+
+    case TOK_KEY_FN:
+        statement_start(current, statement);
+        if (current->token->type != TOK_TYPE_ID)
+        {
+            error_printd(ERROR_PARSER_INVALID_STATEMENT_START,
+                         &statement->token->line);
+        }
+        statement_start_with_expression(current, statement);
+
+        parse_statement_block(current, statement);
+        break;
+
+    case TOK_KEY_ELSE:
+        statement_start(current, statement);
+        parse_statement_block(current, statement);
+        break;
+
+    case TOK_KEY_VAR:
+        statement_start_with_expression(current, statement);
+
+        if (!statement->expressions->size)
+        {
+            error_printd(ERROR_PARSER_INVALID_VAR_ASSIGNMENT,
+                         &statement->token->line);
+        }
+        break;
+
+    case TOK_KEY_BREAK:
+        statement_start(current, statement);
+        break;
+
+    case TOK_KEY_RETURN:
+        statement_start_with_expression(current, statement);
+        break;
+
+    default:
+        error_printd(ERROR_PARSER_NOT_HANDLED_KEYWORD, current->token);
+    }
+}
+
 static Statement *parse_statement(ParserNode *current)
 {
     remove_all_token(current, TOK_SEP_SEMI);
-
     if (current->node == NULL || current->token->id == TOK_SEP_CBE)
         return NULL;
 
     Statement *statement = statement_new();
 
-    if (current->token->type == TOK_TYPE_KEY)
-    {
-        switch (current->token->id)
-        {
-        case TOK_KEY_FOR:
-        case TOK_KEY_WHILE:
-        case TOK_KEY_IF:
-        case TOK_KEY_ELIF:
-            statement_start(current, statement);
-            parse_expression_block(current, statement->expressions);
-            if (statement->expressions->size == 0)
-            {
-                error_printd(ERROR_PARSER_INVALID_NUMBER_PARAMETERS,
-                             &statement->token->line);
-            }
-
-            parse_statement_block(current, statement);
-            break;
-
-        case TOK_KEY_FN:
-            statement_start(current, statement);
-            if (current->token->type != TOK_TYPE_ID)
-            {
-                error_printd(ERROR_PARSER_INVALID_STATEMENT_START,
-                             &statement->token->line);
-            }
-            statement_start(current, statement);
-            parse_expression_block(current, statement->expressions);
-
-            parse_statement_block(current, statement);
-            break;
-
-        case TOK_KEY_ELSE:
-            statement_start(current, statement);
-            parse_statement_block(current, statement);
-            break;
-
-        case TOK_KEY_VAR:
-            statement_start(current, statement);
-            parse_expression_block(current, statement->expressions);
-
-            if (!statement->expressions->size)
-            {
-                error_printd(ERROR_PARSER_INVALID_VAR_ASSIGNMENT,
-                             &statement->token->line);
-            }
-            break;
-
-        case TOK_KEY_BREAK:
-            statement_start(current, statement);
-            break;
-
-        case TOK_KEY_RETURN:
-            statement_start(current, statement);
-            parse_expression_block(current, statement->expressions);
-            break;
-
-        default:
-            error_printd(ERROR_PARSER_NOT_HANDLED_KEYWORD, current->token);
-        }
-    }
+    if      (current->token->type == TOK_TYPE_KEY)
+        parse_statement_keyword(current, statement);
     else if (current->token->id == TOK_SEP_CBS)
-    {
         parse_statement_block(current, statement);
-    }
     else if (expression_is_token_valid(current->token))
-    {
         parse_expression_block(current, statement->expressions);
-    }
     else
-    {
         error_printd(ERROR_PARSER_INVALID_STATEMENT, &current->token->line);
-    }
 
     return statement;
 }
