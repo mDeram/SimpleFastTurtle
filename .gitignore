@@ -11,6 +11,7 @@ obj/
 code_save/
 *.sublime-workspace
 *.swp
+journey
 
 # Compiled source #
 ###################
