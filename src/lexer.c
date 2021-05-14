@@ -90,7 +90,7 @@ static void handle_args(List *tokens,
 
 static void save_in_file(List *tokens)
 {
-    FILE *output = fopen("lexer.l", "w+");
+    FILE *output = fopen("output.l", "w+");
     if (output == NULL)
         error_print(ERROR_LEXER_FILE_OUTPUT_FAILURE);
 

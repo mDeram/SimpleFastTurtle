@@ -82,7 +82,7 @@ void parser_free(List *tree_token)
 
 static void save_in_file(List *tree_token, List *tokens)
 {
-    FILE *output = fopen("parser.p", "w+");
+    FILE *output = fopen("output.p", "w+");
     if (output == NULL)
         error_print(ERROR_PARSER_FILE_OUTPUT_FAILURE);
 
