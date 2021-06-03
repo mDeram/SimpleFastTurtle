@@ -4,3 +4,4 @@
 journey
 *.o
 src/sft
+test/unit
