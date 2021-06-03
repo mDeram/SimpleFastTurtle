@@ -171,19 +171,28 @@ static void statement_inline(ParserNode *current, Statement *statement)
 
 static void statement_block(ParserNode *current, Statement *statement)
 {
+    TokenNode *last_token = current->token;
+
     if (!next_node(current)) /* { */
     {
         error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK,
                      &statement->token->line);
     }
 
+
+
     while (current->token->id != TOK_SEP_CBE)
     {
         Statement *new_statement = parse_statement(current);
         if (current->node == NULL)
         {
-            error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END,
-                         &statement->token->line);
+            ulong line;
+            if (statement->token != NULL)
+                line = statement->token->line;
+            else
+                line = last_token->line;
+
+            error_printd(ERROR_PARSER_INVALID_STATEMENT_BLOCK_END, &line);
         }
 
         if (new_statement != NULL)

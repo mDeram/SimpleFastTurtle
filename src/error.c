@@ -68,6 +68,7 @@ void error_printd(const int error_id, const void *data)
         break;
     }
     }
+    fprintf(stderr, "\n");
     exit(EXIT_FAILURE);
 }
 

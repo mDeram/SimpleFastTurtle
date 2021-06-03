@@ -1,7 +1,6 @@
 *.sft
 *.l
 *.p
-code_save/
 journey
 *.o
 src/sft
