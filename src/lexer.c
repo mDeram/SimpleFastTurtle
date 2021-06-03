@@ -406,8 +406,6 @@ static TokId get_double_operator(ListNode *last, char op2)
             return TOK_OP_DECR;
         case TOK_OP_BY:
             return TOK_OP_EXPO;
-        case TOK_OP_DIV:
-            return TOK_OP_SQRT;
         case TOK_OP_AND:
             return TOK_OP_LOGIC_AND;
         case TOK_OP_OR:

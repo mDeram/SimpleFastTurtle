@@ -88,12 +88,12 @@ typedef enum {
     TOK_OP_INCR         = 2,    /*  ++  */
     TOK_OP_DECR         = 3,    /*  --  */
     TOK_OP_EXPO         = 4,    /*  **  */
-    TOK_OP_SQRT         = 5,    /*  //  */
+//  TOK_OP_SQRT         I <3    you sqrt !
     TOK_OP_EQUAL        = 6,    /*  ==  */
     TOK_OP_NOT_EQUAL    = 7,    /*  !=  */
     TOK_OP_INF_EQUAL    = 8,    /*  <=  */
     TOK_OP_SUP_EQUAL    = 9,    /*  >=  */
-    TOK_OP_LOGIC_AND    = 10,    /*  &&  */
+    TOK_OP_LOGIC_AND    = 10,   /*  &&  */
     TOK_OP_LOGIC_OR     = 11,   /*  ||  */
     TOK_OP_ADD_ASIGN    = 12,   /*  +=  */
     TOK_OP_SUB_ASIGN    = 13,   /*  -=  */
