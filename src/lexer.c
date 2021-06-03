@@ -430,6 +430,8 @@ static TokId get_double_operator(ListNode *last, char op2)
             return TOK_OP_BY_ASIGN;
         case TOK_OP_DIV:
             return TOK_OP_DIV_ASIGN;
+        case TOK_OP_MOD:
+            return TOK_OP_MOD_ASIGN;
         }
     }
     return TOK_NULL;
