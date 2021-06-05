@@ -1,0 +1,12 @@
+I_am_not_a_comment // I am a comment // I am a comment too
+= 5/*Some more comments*/ + not_a_comment
+
+/* /* still a comment // a comment too */
+
+I_want_to_get_compiled_plz /* ok
+
+    comment
+    // comment
+    //comment
+
+        */= wiiiii

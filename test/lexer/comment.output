@@ -1,0 +1,8 @@
+[Line: 1		Type: 4		Id: 100		Symbol: I_am_not_a_comment		]
+[Line: 2		Type: 0		Id: 61		Symbol: =		]
+[Line: 2		Type: 3		Id: 97		Symbol: 5		]
+[Line: 2		Type: 0		Id: 43		Symbol: +		]
+[Line: 2		Type: 4		Id: 100		Symbol: not_a_comment		]
+[Line: 6		Type: 4		Id: 100		Symbol: I_want_to_get_compiled_plz		]
+[Line: 12		Type: 0		Id: 61		Symbol: =		]
+[Line: 12		Type: 4		Id: 100		Symbol: wiiiii		]
