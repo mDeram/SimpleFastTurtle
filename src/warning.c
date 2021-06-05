@@ -15,7 +15,8 @@ static const char *c_warning_list[100];
 /* o = lu */
 static const char *c_warning_list[100] = {
     /*  Lexer   */
-    "A BLOCK COMMENT HAS NOT BEEN CLOSED", "",
+    "A COMMENT BLOCK HAS NOT BEEN CLOSED", "",
+    "IDENTIFIER LONGER THAN "F_STR(TOKEN_TYPE_ID_LENGTH)" CHAR HAS BEEN TRUNCATED : %s", "s",
 
     /*  Parser  */
     "EMPTY STATEMENT - LINE : %lu", "o",

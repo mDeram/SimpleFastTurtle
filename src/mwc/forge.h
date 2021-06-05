@@ -2,7 +2,7 @@
 #define F_FORGE_H
 
 /*
- * Description
+ * Some helper for C
  */
 
 
@@ -38,6 +38,11 @@ typedef unsigned int   uint;
 typedef signed   long  int64;
 typedef unsigned long  uint64;
 typedef unsigned long  ulong;
+
+
+
+#define F_STR_HELPER(x) #x
+#define F_STR(x) F_STR_HELPER(x)
 
 
 

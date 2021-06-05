@@ -13,6 +13,10 @@
 
 
 
+#define TOKEN_TYPE_ID_LENGTH 32
+
+
+
 typedef struct TokenNode TokenNode;
 typedef struct Statement Statement;
 typedef struct Expression Expression;
@@ -62,7 +66,6 @@ typedef enum {
     TOK_TYPE_ID
 } TokType;
 
-/* TODO I don't need to put default value myself */
 typedef enum {
     /*
      *  All the literal number are choosen depending on the space

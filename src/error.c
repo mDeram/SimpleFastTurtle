@@ -23,7 +23,6 @@ static const char *c_error_list[100] = {
     /*  Lexer   */
     "FILE \"%s\" NOT FOUND FOUND", "s",
     "FAILED TO OPEN OR CREATE \"lexer.l\"", "",
-    "IDENTIFIER LONGER THAN 90 CHAR :\n%s", "s",
     "A STRING HAS NOT BEEN CLOSED", "",
 
     /*  Parser  */

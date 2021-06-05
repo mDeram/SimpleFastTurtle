@@ -26,9 +26,10 @@ TokenNode *token_create(const ulong current_line,
     node->id = id;
 
     /* copy the string and cut it if needed */
-    size_t len = strlen(token)+1;
-    if (type == TOK_TYPE_ID && len > 32)
+    size_t len = strlen(token);
+    if (type == TOK_TYPE_ID && len > TOKEN_TYPE_ID_LENGTH)
         len = 32;
+    len++;
     node->token = malloc(sizeof(char)*len);
     if (node->token == NULL) exit(EXIT_FAILURE);
     strncpy(node->token, token, len-1);

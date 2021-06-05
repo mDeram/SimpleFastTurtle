@@ -19,7 +19,6 @@ void error_printd(const int error_id, const void *data);
 enum {
     ERROR_LEXER_FILE_NOT_FOUND,
     ERROR_LEXER_FILE_OUTPUT_FAILURE,
-    ERROR_LEXER_ID_TOO_LONG,
     ERROR_LEXER_STRING_NOT_CLOSED,
 
     ERROR_PARSER_FILE_OUTPUT_FAILURE,

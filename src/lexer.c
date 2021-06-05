@@ -304,7 +304,6 @@ static void general_test(List *tokens, LexerToken *current)
         return;
 
     current->token[current->index] = '\0';
-    current->index = 0;
 
     TokId result;
     if      ((result = get_literal(current->token)) != TOK_NULL)
@@ -323,16 +322,22 @@ static void general_test(List *tokens, LexerToken *current)
     }
     else
     {
+        if (current->index > TOKEN_TYPE_ID_LENGTH)
+                warning_printd(WARNING_LEXER_ID_TOO_LONG, &current->token);
+
         list_push(tokens, token_create(current->line,
                                        TOK_TYPE_ID,
                                        TOK_ID,
                                        current->token));
     }
+
+    current->index = 0;
 }
 
 static TokId get_literal(const char token[])
 {
     char first_char = token[0];
+    // TODO check if the number is valid
     if (first_char >= '0' && first_char <= '9')
         return TOK_LI_NUMBER;
     if (!strcmp("true", token) || !strcmp("false", token))
