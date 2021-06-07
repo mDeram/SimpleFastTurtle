@@ -2,9 +2,11 @@ SRC=../../src/
 
 cd $(dirname $0)
 
+echo -e "\t\tTesting lexer"
+
 for input in *.input; do
     name=$(echo $input | cut -d'.' -f1)
-    echo "Testing $name"
+    echo -e "\tTesting $name"
     rm main.sft
     cp $input main.sft
     ./$SRC/sft >/dev/null
@@ -12,5 +14,7 @@ for input in *.input; do
     if [ -f $output ]; then
         diff --color $output output.l
     fi
-    echo "Done $name"
+    echo -e "\tDone $name"
 done
+
+echo -e "\t\tDone"

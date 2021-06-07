@@ -204,7 +204,7 @@ static int handle_strings(FILE *f, List *tokens, LexerToken *current)
         return 0;
 
     size_t index = 0;
-    size_t size  = 16; /*If 16 is to small, size *= 2*/
+    size_t size  = 16;  /* If 16 is to small, size *= 2 */
     char   *str  = malloc(sizeof(char)*size);
 
     char c;

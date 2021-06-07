@@ -9,5 +9,9 @@ default: sft
 sft: $(OBJ)
 	gcc -o $@ $^
 
+debug: $(OBJ)
+	gcc -Q -v -da -o $@ $^
+	gdb debug
+
 clean:
 	rm *.o
