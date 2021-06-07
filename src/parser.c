@@ -99,7 +99,7 @@ static void parse(List *tree_token, List *tokens)
     ParserNode current = {NULL, NULL};
     current.node = tokens->head;
     current.token = (TokenNode *)tokens->head->data;
-    printf("TOK: %s\n", current.token->token);
+    printf("TOK A: %s\n", current.token->token);
 
     ListNode *last_node = NULL;
 
@@ -126,7 +126,7 @@ static int next_node(ParserNode *current)
         return 0;
 
     current->token = (TokenNode *)current->node->data;
-    printf("TOK: %s\n", current->token->token);
+    printf("TOK B: %s\n", current->token->token);
     return 1;
 }
 
@@ -456,6 +456,8 @@ static List *expression_to_boundary_list(ParserNode *current)
     Boundary *new_boundary = NULL;
     if (!boundaries->size)
     {
+        if (!size)
+            error_printd(ERROR_PARSER_INVALID_EXPRESSION, &current->token->line);
         new_boundary = boundary_create(0, size - 1);
     }
     else
